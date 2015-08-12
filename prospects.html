@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Prospect test page</title>
+</head>
+
+<body>
+    <form id="mainForm" action="/" method="POST">
+        First name:<br>
+        <input type="text" name="firstname"><br>
+        Last name:<br>
+        <input type="text" name="lastname"><br>
+        E-mail:<br>
+        <input type="email" name="email"><br>
+        <input type="hidden" name="appname" value="testapp"/>
+        <input type="submit" value="Submit">
+        <input type="button" value="Clear">
+    </form>
+
+    <script type="text/javascript">
+        mainForm = document.getElementById("mainForm");
+        var inputs = document.getElementsByTagName("input");
+        var appnameText = null;
+        var firstnameText = null;
+        var lastnameText = null;
+        var emailText = null;
+        var clearButton = null;
+
+        for(var iter = 0; iter < inputs.length; ++iter)
+        {
+            if(inputs[iter].name == "appname")
+                appnameText = inputs[iter];
+            else if(inputs[iter].name == "firstname")
+                firstnameText = inputs[iter];
+            else if(inputs[iter].name == "lastname")
+                lastnameText = inputs[iter];
+            else if(inputs[iter].name == "email")
+                emailText = inputs[iter];
+            else if(inputs[iter].value.toLowerCase() == "clear")
+                clearButton = inputs[iter];
+        };
+
+        mainForm.addEventListener("submit", function(e)
+        {
+            var xmlHttp = new XMLHttpRequest();
+
+            xmlHttp.onload = function(lev)
+            {
+                console.log(xmlHttp.responseText);
+                console.log(xmlHttp.status);
+                jsonResponse = JSON.parse(xmlHttp.responseText);
+                console.log(jsonResponse);
+                //alert("Successfully sent data!");
+                //mainForm.reset();
+            };
+
+            xmlHttp.onerror = function(eev)
+            {
+                console.log(xmlHttp.responseText);
+                console.log(xmlHttp.status);
+                //alert(xmlHttp.responseText);
+            };
+
+            var appnameStr = appnameText.name + "=" + encodeURIComponent(appnameText.value);
+            var firstnameStr = firstnameText.name + "=" + encodeURIComponent(firstnameText.value);
+            var lastnameStr = lastnameText.name + "=" + encodeURIComponent(lastnameText.value);
+            var emailStr = emailText.name + "=" + encodeURIComponent(emailText.value);
+
+            xmlHttp.open("POST", "/prospects", true);
+            xmlHttp.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xmlHttp.send(appnameStr + "&" + firstnameStr + "&" + lastnameStr + "&" + emailStr);
+
+            e.preventDefault();
+        });
+
+        clearButton.addEventListener("click", function(e)
+        {
+            mainForm.reset();
+        });
+
+    </script>
+
+</body>
+
+</html>
