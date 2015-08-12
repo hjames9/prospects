@@ -9,7 +9,7 @@
 </head>
 
 <body>
-    <form id="mainForm" action="/" method="POST">
+    <form id="mainForm" action="/prospects" method="POST">
         First name:<br>
         <input type="text" name="firstname"><br>
         Last name:<br>
@@ -70,7 +70,7 @@
             var lastnameStr = lastnameText.name + "=" + encodeURIComponent(lastnameText.value);
             var emailStr = emailText.name + "=" + encodeURIComponent(emailText.value);
 
-            xmlHttp.open("POST", "/prospects", true);
+            xmlHttp.open(mainForm.method, mainForm.action, true);
             xmlHttp.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
             xmlHttp.send(appnameStr + "&" + firstnameStr + "&" + lastnameStr + "&" + emailStr);
 
