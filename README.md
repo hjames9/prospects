@@ -5,6 +5,8 @@ A Go-based http server to collect potential prospects and persist them to a Post
     DB_USER=hjames (no default)
     DB_PASSWORD=blahblah (no default)
     DB_NAME=prospect_db (no default)
+    DB_HOST=localhost (default is localhost)
+    DB_PORT=5432 (default is 5432)
     HTTP_HOST=localhost (default is all interfaces (blank))
     HTTP_PORT=8080 (default is 3000)
     MARTINI_ENV=production (default is development)

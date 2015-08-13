@@ -44,11 +44,21 @@ func main() {
 	password := os.Getenv("DB_PASSWORD")
 	dbName := os.Getenv("DB_NAME")
 
-	if len(user) == 0 || len(password) == 0 || len(dbName) == 0 {
-		log.Fatalf("Database credentials NOT set correctly. User(%s), Password(%s), Database name(%s)", user, password, dbName)
+	dbHost := os.Getenv("DB_HOST")
+	if len(dbHost) == 0 {
+		dbHost = "localhost"
 	}
 
-	db := setupDatabase(user, password, dbName)
+	dbPort := os.Getenv("DB_PORT")
+	if len(dbPort) == 0 {
+		dbPort = "5432"
+	}
+
+	if len(user) == 0 || len(password) == 0 || len(dbName) == 0 {
+		log.Fatalf("Database credentials NOT set correctly. User(%s), Password(%s), Database name(%s), Host(%s), Port(%s)", user, password, dbName, dbHost, dbPort)
+	}
+
+	db := setupDatabase(user, password, dbName, dbHost, dbPort)
 	defer db.Close()
 
 	//Regular expression
@@ -79,8 +89,8 @@ func main() {
 	runHttpServer(createHandler, notFoundHandler, host, port)
 }
 
-func setupDatabase(user string, password string, dbName string) *sql.DB {
-	dbinfo := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable", user, password, dbName)
+func setupDatabase(user string, password string, dbName string, host string, port string) *sql.DB {
+	dbinfo := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable host=%s port=%s", user, password, dbName, host, port)
 
 	db, err := sql.Open("postgres", dbinfo)
 	if nil != err {
