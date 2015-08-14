@@ -36,6 +36,44 @@ type Response struct {
 type CreateHandler func(http.ResponseWriter, ProspectForm) (int, string)
 type NotFoundHandler func(http.ResponseWriter, *http.Request) (int, string)
 
+type DatabaseCredentials struct {
+	Url      string
+	User     string
+	Password string
+	Name     string
+	Host     string
+	Port     string
+}
+
+func (dbCred DatabaseCredentials) IsValid() bool {
+	result := false
+
+	if len(dbCred.Url) > 0 {
+		result = true
+	} else if len(dbCred.User) > 0 && len(dbCred.Password) > 0 && len(dbCred.Name) > 0 {
+		result = true
+	}
+
+	return result
+}
+
+func (dbCred DatabaseCredentials) GetString(useUrlArr ...bool) string {
+	var dbInfo string
+
+	useUrl := true
+	if len(useUrlArr) > 0 {
+		useUrl = useUrlArr[0]
+	}
+
+	if useUrl && len(dbCred.Url) > 0 {
+		dbInfo = dbCred.Url
+	} else {
+		dbInfo = fmt.Sprintf("user=%s password=%s dbname=%s host=%s port=%s", dbCred.User, dbCred.Password, dbCred.Name, dbCred.Host, dbCred.Port)
+	}
+
+	return dbInfo
+}
+
 func GetenvWithDefault(envKey string, defaultVal string) string {
 	envVal := os.Getenv(envKey)
 
@@ -50,18 +88,19 @@ func main() {
 	//Database connection
 	log.Print("Enabling database connectivity")
 
-	user := os.Getenv("DB_USER")
-	password := os.Getenv("DB_PASSWORD")
+	dbUrl := os.Getenv("DATABASE_URL")
+	dbUser := os.Getenv("DB_USER")
+	dbPassword := os.Getenv("DB_PASSWORD")
 	dbName := os.Getenv("DB_NAME")
-
 	dbHost := GetenvWithDefault("DB_HOST", "localhost")
 	dbPort := GetenvWithDefault("DB_PORT", "5432")
 
-	if len(user) == 0 || len(password) == 0 || len(dbName) == 0 {
-		log.Fatalf("Database credentials NOT set correctly. User(%s), Password(%s), Database name(%s), Host(%s), Port(%s)", user, password, dbName, dbHost, dbPort)
+	dbCredentials := DatabaseCredentials{dbUrl, dbUser, dbPassword, dbName, dbHost, dbPort}
+	if !dbCredentials.IsValid() {
+		log.Fatalf("Database credentials NOT set correctly. %#v", dbCredentials)
 	}
 
-	db := setupDatabase(user, password, dbName, dbHost, dbPort)
+	db := setupDatabase(dbCredentials)
 	defer db.Close()
 
 	//Regular expression
@@ -84,17 +123,15 @@ func main() {
 	runHttpServer(createHandler, notFoundHandler, host, port)
 }
 
-func setupDatabase(user string, password string, dbName string, host string, port string) *sql.DB {
-	dbinfo := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=require host=%s port=%s", user, password, dbName, host, port)
-
-	db, err := sql.Open("postgres", dbinfo)
+func setupDatabase(dbCredentials DatabaseCredentials) *sql.DB {
+	db, err := sql.Open("postgres", dbCredentials.GetString())
 	if nil != err {
-		log.Print("Error opening configured database")
+		log.Printf("Error opening configured database: %s", dbCredentials.GetString())
 	}
 
 	err = db.Ping()
 	if nil != err {
-		log.Print("Error connecting to database")
+		log.Printf("Error connecting to database: %s", dbCredentials.GetString())
 	}
 
 	return db
