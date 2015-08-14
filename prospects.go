@@ -36,6 +36,16 @@ type Response struct {
 type CreateHandler func(http.ResponseWriter, ProspectForm) (int, string)
 type NotFoundHandler func(http.ResponseWriter, *http.Request) (int, string)
 
+func GetenvWithDefault(envKey string, defaultVal string) string {
+	envVal := os.Getenv(envKey)
+
+	if len(envVal) == 0 {
+		envVal = defaultVal
+	}
+
+	return envVal
+}
+
 func main() {
 	//Database connection
 	log.Print("Enabling database connectivity")
@@ -44,15 +54,8 @@ func main() {
 	password := os.Getenv("DB_PASSWORD")
 	dbName := os.Getenv("DB_NAME")
 
-	dbHost := os.Getenv("DB_HOST")
-	if len(dbHost) == 0 {
-		dbHost = "localhost"
-	}
-
-	dbPort := os.Getenv("DB_PORT")
-	if len(dbPort) == 0 {
-		dbPort = "5432"
-	}
+	dbHost := GetenvWithDefault("DB_HOST", "localhost")
+	dbPort := GetenvWithDefault("DB_PORT", "5432")
 
 	if len(user) == 0 || len(password) == 0 || len(dbName) == 0 {
 		log.Fatalf("Database credentials NOT set correctly. User(%s), Password(%s), Database name(%s), Host(%s), Port(%s)", user, password, dbName, dbHost, dbPort)
@@ -63,27 +66,19 @@ func main() {
 
 	//Regular expression
 	log.Print("Compiling e-mail regular expression")
-	emailRegex, _ := regexp.Compile(EMAIL_REGEX)
+	emailRegex, err := regexp.Compile(EMAIL_REGEX)
+	if nil != err {
+		log.Fatalf("Regex compilation failed for %s", EMAIL_REGEX)
+	}
 
 	//HTTP handlers
 	log.Print("Preparing HTTP handlers")
 	createHandler, notFoundHandler := setupHttpHandlers(db, emailRegex)
 
 	//HTTP server
-	host := os.Getenv("HTTP_HOST")
-	if len(host) == 0 {
-		host = ""
-	}
-
-	port := os.Getenv("HTTP_PORT")
-	if len(port) == 0 {
-		port = "3000"
-	}
-
-	mode := os.Getenv("MARTINI_ENV")
-	if len(mode) == 0 {
-		mode = "development"
-	}
+	host := GetenvWithDefault("HTTP_HOST", "")
+	port := GetenvWithDefault("HTTP_PORT", "3000")
+	mode := GetenvWithDefault("MARTINI_ENV", "development")
 
 	log.Printf("Running HTTP server on %s:%s in mode %s", host, port, mode)
 	runHttpServer(createHandler, notFoundHandler, host, port)
