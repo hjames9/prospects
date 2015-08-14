@@ -115,12 +115,12 @@ func main() {
 	createHandler, notFoundHandler := setupHttpHandlers(db, emailRegex)
 
 	//HTTP server
-	host := GetenvWithDefault("HTTP_HOST", "")
-	port := GetenvWithDefault("HTTP_PORT", "3000")
+	host := GetenvWithDefault("HOST", "")
+	port := GetenvWithDefault("PORT", "3000")
 	mode := GetenvWithDefault("MARTINI_ENV", "development")
 
 	log.Printf("Running HTTP server on %s:%s in mode %s", host, port, mode)
-	runHttpServer(createHandler, notFoundHandler, host, port)
+	runHttpServer(createHandler, notFoundHandler)
 }
 
 func setupDatabase(dbCredentials DatabaseCredentials) *sql.DB {
@@ -197,10 +197,7 @@ func addProspect(db *sql.DB, prospect ProspectForm) error {
 	return err
 }
 
-func runHttpServer(createHandler CreateHandler, notFoundHandler NotFoundHandler, host string, port string) {
-	os.Setenv("HOST", host)
-	os.Setenv("PORT", port)
-
+func runHttpServer(createHandler CreateHandler, notFoundHandler NotFoundHandler) {
 	martini_ := martini.Classic()
 
 	allowCORSHandler := cors.Allow(&cors.Options{
