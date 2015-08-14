@@ -85,7 +85,7 @@ func main() {
 }
 
 func setupDatabase(user string, password string, dbName string, host string, port string) *sql.DB {
-	dbinfo := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable host=%s port=%s", user, password, dbName, host, port)
+	dbinfo := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=require host=%s port=%s", user, password, dbName, host, port)
 
 	db, err := sql.Open("postgres", dbinfo)
 	if nil != err {
