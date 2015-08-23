@@ -16,16 +16,18 @@ import (
 )
 
 const (
-	QUERY       = "INSERT INTO prospects (app_name, email, first_name, last_name, created_at) VALUES($1, $2, $3, $4, $5) RETURNING id;"
+	QUERY       = "INSERT INTO prospects (app_name, email, first_name, last_name, phone_number, created_at) VALUES($1, $2, $3, $4, $5, $6) RETURNING id;"
 	EMAIL_REGEX = "([\\w\\d\\.]+)@[\\w\\d\\.]+"
 	POST_URL    = "/prospects"
+	DB_DRIVER   = "postgres"
 )
 
 type ProspectForm struct {
-	AppName   string `form:"appname" binding:"required"`
-	FirstName string `form:"firstname"`
-	LastName  string `form:"lastname"`
-	Email     string `form:"email" binding:"required"`
+	AppName     string `form:"appname" binding:"required"`
+	FirstName   string `form:"firstname"`
+	LastName    string `form:"lastname"`
+	Email       string `form:"email" binding:"required"`
+	PhoneNumber string `form:"phonenumber"`
 }
 
 type Response struct {
@@ -35,44 +37,6 @@ type Response struct {
 
 type CreateHandler func(http.ResponseWriter, ProspectForm) (int, string)
 type NotFoundHandler func(http.ResponseWriter, *http.Request) (int, string)
-
-type DatabaseCredentials struct {
-	Url      string
-	User     string
-	Password string
-	Name     string
-	Host     string
-	Port     string
-}
-
-func (dbCred DatabaseCredentials) IsValid() bool {
-	result := false
-
-	if len(dbCred.Url) > 0 {
-		result = true
-	} else if len(dbCred.User) > 0 && len(dbCred.Password) > 0 && len(dbCred.Name) > 0 {
-		result = true
-	}
-
-	return result
-}
-
-func (dbCred DatabaseCredentials) GetString(useUrlArr ...bool) string {
-	var dbInfo string
-
-	useUrl := true
-	if len(useUrlArr) > 0 {
-		useUrl = useUrlArr[0]
-	}
-
-	if useUrl && len(dbCred.Url) > 0 {
-		dbInfo = dbCred.Url
-	} else {
-		dbInfo = fmt.Sprintf("user=%s password=%s dbname=%s host=%s port=%s", dbCred.User, dbCred.Password, dbCred.Name, dbCred.Host, dbCred.Port)
-	}
-
-	return dbInfo
-}
 
 func GetenvWithDefault(envKey string, defaultVal string) string {
 	envVal := os.Getenv(envKey)
@@ -95,12 +59,12 @@ func main() {
 	dbHost := GetenvWithDefault("DB_HOST", "localhost")
 	dbPort := GetenvWithDefault("DB_PORT", "5432")
 
-	dbCredentials := DatabaseCredentials{dbUrl, dbUser, dbPassword, dbName, dbHost, dbPort}
+	dbCredentials := DatabaseCredentials{DB_DRIVER, dbUrl, dbUser, dbPassword, dbName, dbHost, dbPort}
 	if !dbCredentials.IsValid() {
 		log.Fatalf("Database credentials NOT set correctly. %#v", dbCredentials)
 	}
 
-	db := setupDatabase(dbCredentials)
+	db := dbCredentials.GetDatabase()
 	defer db.Close()
 
 	//Regular expression
@@ -121,20 +85,6 @@ func main() {
 
 	log.Printf("Running HTTP server on %s:%s in mode %s", host, port, mode)
 	runHttpServer(createHandler, notFoundHandler)
-}
-
-func setupDatabase(dbCredentials DatabaseCredentials) *sql.DB {
-	db, err := sql.Open("postgres", dbCredentials.GetString())
-	if nil != err {
-		log.Printf("Error opening configured database: %s", dbCredentials.GetString())
-	}
-
-	err = db.Ping()
-	if nil != err {
-		log.Printf("Error connecting to database: %s", dbCredentials.GetString())
-	}
-
-	return db
 }
 
 func setupHttpHandlers(db *sql.DB, emailRegex *regexp.Regexp) (CreateHandler, NotFoundHandler) {
@@ -187,8 +137,13 @@ func addProspect(db *sql.DB, prospect ProspectForm) error {
 		lastName = sql.NullString{prospect.LastName, true}
 	}
 
+	var phoneNumber sql.NullString
+	if len(prospect.PhoneNumber) != 0 {
+		phoneNumber = sql.NullString{prospect.PhoneNumber, true}
+	}
+
 	var lastInsertId int
-	err := db.QueryRow(QUERY, prospect.AppName, prospect.Email, firstName, lastName, time.Now()).Scan(&lastInsertId)
+	err := db.QueryRow(QUERY, prospect.AppName, prospect.Email, firstName, lastName, phoneNumber, time.Now()).Scan(&lastInsertId)
 
 	if nil == err {
 		log.Printf("New prospect id = %d", lastInsertId)
