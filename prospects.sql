@@ -13,4 +13,8 @@ CREATE TABLE prospects
 
 CREATE VIEW sneezers
 AS
-SELECT MAX(id) AS id, app_name, email, MAX(first_name) AS first_name, MAX(last_name) AS last_name, MAX(phone_number) AS phone_number, MAX(created_at) AS created_at FROM prospects WHERE is_valid = TRUE and was_processed = TRUE GROUP BY app_name, email
+SELECT MAX(id) AS id, app_name, email, MAX(first_name) AS first_name, MAX(last_name) AS last_name, MAX(phone_number) AS phone_number, MAX(created_at) AS created_at FROM prospects WHERE is_valid = TRUE AND was_processed = TRUE GROUP BY app_name, email;
+
+CREATE INDEX p_app_name_idx ON prospects(app_name);
+
+CREATE INDEX p_email_idx ON prospects(email);
