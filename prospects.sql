@@ -13,4 +13,4 @@ CREATE TABLE prospects
 
 CREATE VIEW sneezers
 AS
-SELECT id, app_name, email, first_name, last_name, phone_number, created_at FROM prospects WHERE is_valid = TRUE and was_processed = TRUE
+SELECT MAX(id) AS id, app_name, email, MAX(first_name) AS first_name, MAX(last_name) AS last_name, MAX(phone_number) AS phone_number, MAX(created_at) AS created_at FROM prospects WHERE is_valid = TRUE and was_processed = TRUE GROUP BY app_name, email
