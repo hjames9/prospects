@@ -69,6 +69,7 @@
             var firstnameStr = firstnameText.name + "=" + encodeURIComponent(firstnameText.value);
             var lastnameStr = lastnameText.name + "=" + encodeURIComponent(lastnameText.value);
             var emailStr = emailText.name + "=" + encodeURIComponent(emailText.value);
+            console.log(document.referrer);
 
             xmlHttp.open(mainForm.method, mainForm.action, true);
             xmlHttp.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');

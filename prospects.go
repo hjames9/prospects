@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	QUERY       = "INSERT INTO prospects (app_name, email, first_name, last_name, phone_number, created_at) VALUES($1, $2, $3, $4, $5, $6) RETURNING id;"
+	QUERY       = "INSERT INTO prospects (app_name, email, referrer, first_name, last_name, phone_number, created_at) VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING id;"
 	EMAIL_REGEX = "([\\w\\d\\.]+)@[\\w\\d\\.]+"
 	POST_URL    = "/prospects"
 	DB_DRIVER   = "postgres"
@@ -24,6 +24,7 @@ const (
 
 type ProspectForm struct {
 	AppName     string `form:"appname" binding:"required"`
+	Referrer    string `form:"referrer"`
 	FirstName   string `form:"firstname"`
 	LastName    string `form:"lastname"`
 	Email       string `form:"email" binding:"required"`
@@ -142,8 +143,13 @@ func addProspect(db *sql.DB, prospect ProspectForm) error {
 		phoneNumber = sql.NullString{prospect.PhoneNumber, true}
 	}
 
+	var referrer sql.NullString
+	if len(prospect.Referrer) != 0 {
+		referrer = sql.NullString{prospect.Referrer, true}
+	}
+
 	var lastInsertId int
-	err := db.QueryRow(QUERY, prospect.AppName, prospect.Email, firstName, lastName, phoneNumber, time.Now()).Scan(&lastInsertId)
+	err := db.QueryRow(QUERY, prospect.AppName, prospect.Email, referrer, firstName, lastName, phoneNumber, time.Now()).Scan(&lastInsertId)
 
 	if nil == err {
 		log.Printf("New prospect id = %d", lastInsertId)

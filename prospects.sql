@@ -3,6 +3,7 @@ CREATE TABLE prospects
     id SERIAL8 NOT NULL PRIMARY KEY,
     app_name VARCHAR NOT NULL,
     email VARCHAR NOT NULL,
+    referrer VARCHAR NULL,
     first_name VARCHAR NULL,
     last_name VARCHAR NULL,
     phone_number VARCHAR NULL,
@@ -18,3 +19,5 @@ SELECT MAX(id) AS id, app_name, email, MAX(first_name) AS first_name, MAX(last_n
 CREATE INDEX p_app_name_idx ON prospects(app_name);
 
 CREATE INDEX p_email_idx ON prospects(email);
+
+CREATE INDEX p_referrer_idx ON prospects(referrer);
