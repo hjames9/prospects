@@ -69,11 +69,50 @@
             var firstnameStr = firstnameText.name + "=" + encodeURIComponent(firstnameText.value);
             var lastnameStr = lastnameText.name + "=" + encodeURIComponent(lastnameText.value);
             var emailStr = emailText.name + "=" + encodeURIComponent(emailText.value);
-            console.log(document.referrer);
+
+            var queryStr = appnameStr + "&" + firstnameStr + "&" + lastnameStr + "&" + emailStr;
+
+            if(document.referrer) {
+                console.log("Referrer: " + document.referrer);
+            } else {
+                console.log("Page was not referred");
+            }
+
+            if(navigator.language) {
+                console.log("Language: " + navigator.language)
+                queryStr += "&language=" + encodeURIComponent(navigator.language);
+            }
+
+            if(navigator.geolocation) {
+                console.log("Geolocation: " + navigator.geolocation)
+
+                navigator.geolocation.getCurrentPosition(
+                    function(pos) {
+                        var crd = pos.coords;
+
+                        console.log('Latitude: ' + crd.latitude);
+                        console.log('Longitude: ' + crd.longitude);
+                        console.log('More or less ' + crd.accuracy + ' meters.');
+
+                        queryStr += "&latitude=" + encodeURIComponent(crd.latitude);
+                        queryStr += "&longitude=" + encodeURIComponent(crd.longitude);
+                    },
+                    function(err) {
+                        console.warn('ERROR(' + err.code + '): ' + err.message);
+                    },
+                    {enableHighAccuracy: true, timeout: 5000, maximumAge: 0}
+                );
+            }
+
+            if(navigator.platform) {
+                console.log("Platform: " + navigator.platform)
+                document.cookie="testing=Hayden James";
+            }
 
             xmlHttp.open(mainForm.method, mainForm.action, true);
             xmlHttp.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-            xmlHttp.send(appnameStr + "&" + firstnameStr + "&" + lastnameStr + "&" + emailStr);
+            xmlHttp.withCredentials = true;
+            xmlHttp.send(queryStr);
 
             e.preventDefault();
         });
