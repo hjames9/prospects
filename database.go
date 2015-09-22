@@ -53,13 +53,16 @@ func (dbCred DatabaseCredentials) GetDriver() string {
 
 func (dbCred DatabaseCredentials) GetDatabase() *sql.DB {
 	db, err := sql.Open(dbCred.GetDriver(), dbCred.GetString())
+
 	if nil != err {
 		log.Printf("Error opening configured database: %s", dbCred.GetString())
-	}
+	} else {
+		db.SetMaxOpenConns(10)
 
-	err = db.Ping()
-	if nil != err {
-		log.Printf("Error connecting to database: %s", dbCred.GetString())
+		err = db.Ping()
+		if nil != err {
+			log.Printf("Error connecting to database: %s", dbCred.GetString())
+		}
 	}
 
 	return db
