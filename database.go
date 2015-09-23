@@ -4,16 +4,18 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strconv"
 )
 
 type DatabaseCredentials struct {
-	Driver   string
-	Url      string
-	User     string
-	Password string
-	Name     string
-	Host     string
-	Port     string
+	Driver       string
+	Url          string
+	User         string
+	Password     string
+	Name         string
+	Host         string
+	Port         string
+	MaxOpenConns string
 }
 
 func (dbCred DatabaseCredentials) IsValid() bool {
@@ -57,11 +59,19 @@ func (dbCred DatabaseCredentials) GetDatabase() *sql.DB {
 	if nil != err {
 		log.Printf("Error opening configured database: %s", dbCred.GetString())
 	} else {
-		db.SetMaxOpenConns(10)
+		maxOpenConns, err := strconv.Atoi(dbCred.MaxOpenConns)
+
+		if nil == err {
+			db.SetMaxOpenConns(maxOpenConns)
+		} else {
+			log.Printf("Error setting database maximum open connections from value: %s", dbCred.MaxOpenConns)
+			log.Print(err)
+		}
 
 		err = db.Ping()
 		if nil != err {
 			log.Printf("Error connecting to database: %s", dbCred.GetString())
+			log.Print(err)
 		}
 	}
 

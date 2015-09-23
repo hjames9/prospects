@@ -69,8 +69,9 @@ func main() {
 	dbName := os.Getenv("DB_NAME")
 	dbHost := GetenvWithDefault("DB_HOST", "localhost")
 	dbPort := GetenvWithDefault("DB_PORT", "5432")
+	dbMaxOpenConns := GetenvWithDefault("DB_MAX_OPEN_CONNS", "10")
 
-	dbCredentials := DatabaseCredentials{DB_DRIVER, dbUrl, dbUser, dbPassword, dbName, dbHost, dbPort}
+	dbCredentials := DatabaseCredentials{DB_DRIVER, dbUrl, dbUser, dbPassword, dbName, dbHost, dbPort, dbMaxOpenConns}
 	if !dbCredentials.IsValid() {
 		log.Fatalf("Database credentials NOT set correctly. %#v", dbCredentials)
 	}
@@ -112,6 +113,7 @@ func setupHttpHandlers(db *sql.DB, emailRegex *regexp.Regexp) (CreateHandler, No
 
 		log.Printf("Received new prospect: %#v", prospect)
 
+		req.Close = true
 		res.Header().Set("Content-Type", "application/json")
 		var response Response
 
@@ -122,6 +124,7 @@ func setupHttpHandlers(db *sql.DB, emailRegex *regexp.Regexp) (CreateHandler, No
 				response = Response{http.StatusInternalServerError, responseStr}
 				log.Print(responseStr)
 				log.Print(err)
+				log.Printf("%d database connections opened", db.Stats().OpenConnections)
 			} else {
 				responseStr := fmt.Sprintf("Successfully added prospect. E-mail %s", prospect.Email)
 				response = Response{http.StatusCreated, responseStr}
@@ -138,6 +141,7 @@ func setupHttpHandlers(db *sql.DB, emailRegex *regexp.Regexp) (CreateHandler, No
 	}
 
 	notFoundHandler := func(res http.ResponseWriter, req *http.Request) (int, string) {
+		req.Close = true
 		res.Header().Set("Content-Type", "application/json")
 		responseStr := fmt.Sprintf("URL Not Found %s", req.URL)
 		response := Response{http.StatusNotFound, responseStr}
