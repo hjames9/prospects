@@ -64,8 +64,11 @@ func (dbCred DatabaseCredentials) GetDatabase() *sql.DB {
 		if nil == err {
 			db.SetMaxOpenConns(maxOpenConns)
 		} else {
-			log.Printf("Error setting database maximum open connections from value: %s", dbCred.MaxOpenConns)
+			const maxOpenConnsErr = 10
+			log.Printf("Error setting database maximum open connections from value: %s. Default to %d", dbCred.MaxOpenConns, maxOpenConnsErr)
 			log.Print(err)
+
+			db.SetMaxOpenConns(maxOpenConnsErr)
 		}
 
 		err = db.Ping()
