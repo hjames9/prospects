@@ -9,6 +9,7 @@ import (
 	"github.com/martini-contrib/binding"
 	"github.com/martini-contrib/cors"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"regexp"
@@ -99,9 +100,23 @@ func main() {
 	runHttpServer(createHandler, notFoundHandler)
 }
 
+func processIpAddress(remoteAddr string) string {
+	ip, _, err := net.SplitHostPort(remoteAddr)
+	if err == nil {
+		return ip
+	}
+
+	ip2 := net.ParseIP(remoteAddr)
+	if ip2 == nil {
+		return ""
+	}
+
+	return ip2.String()
+}
+
 func setupHttpHandlers(db *sql.DB, emailRegex *regexp.Regexp) (CreateHandler, NotFoundHandler) {
 	createHandler := func(res http.ResponseWriter, req *http.Request, prospect ProspectForm) (int, string) {
-		prospect.IpAddress = strings.Split(req.RemoteAddr, ":")[0]
+		prospect.IpAddress = processIpAddress(req.RemoteAddr)
 		prospect.Referrer = req.Referer()
 		prospect.UserAgent = req.UserAgent()
 
