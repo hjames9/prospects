@@ -31,3 +31,5 @@ CREATE INDEX p_app_name_idx ON prospects(app_name);
 CREATE INDEX p_email_idx ON prospects(email);
 
 CREATE INDEX p_referrer_idx ON prospects(referrer);
+
+CREATE INDEX p_misc_idx ON prospects USING GIN(miscellaneous);
