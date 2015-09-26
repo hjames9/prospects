@@ -230,9 +230,10 @@ func runHttpServer(createHandler CreateHandler, notFoundHandler NotFoundHandler)
 	martini_ := martini.Classic()
 
 	allowCORSHandler := cors.Allow(&cors.Options{
-		AllowOrigins: []string{"*"},
-		AllowMethods: []string{"POST"},
-		AllowHeaders: []string{"Origin"},
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"POST"},
+		AllowHeaders:     []string{"Origin"},
+		AllowCredentials: true,
 	})
 
 	martini_.Post(POST_URL, allowCORSHandler, binding.Bind(ProspectForm{}), createHandler)
