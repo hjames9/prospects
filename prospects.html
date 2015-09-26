@@ -22,6 +22,26 @@
     </form>
 
     <script type="text/javascript">
+        var crd = null;
+        if(navigator.geolocation) {
+            console.log("Geolocation: " + navigator.geolocation)
+
+            navigator.geolocation.getCurrentPosition(
+                function(pos) {
+                    crd = pos.coords;
+
+                    console.log('Latitude: ' + crd.latitude);
+                    console.log('Longitude: ' + crd.longitude);
+                    console.log('More or less ' + crd.accuracy + ' meters.');
+
+                },
+                function(err) {
+                    console.warn('ERROR(' + err.code + '): ' + err.message);
+                },
+                {enableHighAccuracy: true, timeout: 5000, maximumAge: 0}
+            );
+        }
+
         mainForm = document.getElementById("mainForm");
         var inputs = document.getElementsByTagName("input");
         var appnameText = null;
@@ -54,15 +74,14 @@
                 console.log(xmlHttp.status);
                 jsonResponse = JSON.parse(xmlHttp.responseText);
                 console.log(jsonResponse);
-                //alert("Successfully sent data!");
-                //mainForm.reset();
+                mainForm.reset();
             };
 
             xmlHttp.onerror = function(eev)
             {
                 console.log(xmlHttp.responseText);
                 console.log(xmlHttp.status);
-                //alert(xmlHttp.responseText);
+                alert(xmlHttp.responseText);
             };
 
             var appnameStr = appnameText.name + "=" + encodeURIComponent(appnameText.value);
@@ -84,24 +103,10 @@
             }
 
             if(navigator.geolocation) {
-                console.log("Geolocation: " + navigator.geolocation)
-
-                navigator.geolocation.getCurrentPosition(
-                    function(pos) {
-                        var crd = pos.coords;
-
-                        console.log('Latitude: ' + crd.latitude);
-                        console.log('Longitude: ' + crd.longitude);
-                        console.log('More or less ' + crd.accuracy + ' meters.');
-
-                        queryStr += "&latitude=" + encodeURIComponent(crd.latitude);
-                        queryStr += "&longitude=" + encodeURIComponent(crd.longitude);
-                    },
-                    function(err) {
-                        console.warn('ERROR(' + err.code + '): ' + err.message);
-                    },
-                    {enableHighAccuracy: true, timeout: 5000, maximumAge: 0}
-                );
+                if(null != crd) {
+                    queryStr += "&latitude=" + encodeURIComponent(crd.latitude);
+                    queryStr += "&longitude=" + encodeURIComponent(crd.longitude);
+                }
             }
 
             if(navigator.platform) {
