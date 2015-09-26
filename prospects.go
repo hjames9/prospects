@@ -8,11 +8,13 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/martini-contrib/binding"
 	"github.com/martini-contrib/cors"
+	"github.com/martini-contrib/secure"
 	"log"
 	"net"
 	"net/http"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -295,6 +297,15 @@ func runHttpServer(createHandler CreateHandler, errorHandler ErrorHandler, notFo
 		AllowHeaders:     []string{"Origin"},
 		AllowCredentials: true,
 	})
+
+	sslRedirect, err := strconv.ParseBool(GetenvWithDefault("SSL_REDIRECT", "false"))
+	if nil != err {
+		sslRedirect = false
+	}
+
+	martini_.Use(secure.Secure(secure.Options{
+		SSLRedirect: sslRedirect,
+	}))
 
 	martini_.Post(POST_URL, allowCORSHandler, binding.Form(ProspectForm{}), errorHandler, createHandler)
 	martini_.NotFound(notFoundHandler)

@@ -24,6 +24,10 @@
 		{
 			"ImportPath": "github.com/martini-contrib/cors",
 			"Rev": "553b9208d353a39b0850c02355f478ba020c86d7"
+		},
+		{
+			"ImportPath": "github.com/martini-contrib/secure",
+			"Rev": "de8e19a0490b816696d093388d53f2e1f0c08b7d"
 		}
 	]
 }
