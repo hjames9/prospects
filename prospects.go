@@ -18,10 +18,12 @@ import (
 )
 
 const (
-	QUERY       = "INSERT INTO prospects (app_name, email, referrer, first_name, last_name, phone_number, age, gender, language, user_agent, cookies, geolocation, ip_address, miscellaneous, created_at) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, ARRAY[$11], POINT($12, $13), $14, $15, $16) RETURNING id;"
-	EMAIL_REGEX = "([\\w\\d\\.]+)@[\\w\\d\\.]+"
-	POST_URL    = "/prospects"
-	DB_DRIVER   = "postgres"
+	QUERY             = "INSERT INTO prospects (app_name, email, referrer, first_name, last_name, phone_number, age, gender, language, user_agent, cookies, geolocation, ip_address, miscellaneous, created_at) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, ARRAY[$11], POINT($12, $13), $14, $15, $16) RETURNING id;"
+	EMAIL_REGEX       = "([\\w\\d\\.]+)@[\\w\\d\\.]+"
+	POST_URL          = "/prospects"
+	DB_DRIVER         = "postgres"
+	CONTENT_TYPE_NAME = "Content-Type"
+	JSON_CONTENT_TYPE = "application/json"
 )
 
 type ProspectForm struct {
@@ -48,6 +50,7 @@ type Response struct {
 }
 
 type CreateHandler func(http.ResponseWriter, *http.Request, ProspectForm) (int, string)
+type ErrorHandler func(binding.Errors, http.ResponseWriter)
 type NotFoundHandler func(http.ResponseWriter, *http.Request) (int, string)
 
 func GetenvWithDefault(envKey string, defaultVal string) string {
@@ -89,7 +92,7 @@ func main() {
 
 	//HTTP handlers
 	log.Print("Preparing HTTP handlers")
-	createHandler, notFoundHandler := setupHttpHandlers(db, emailRegex)
+	createHandler, errorHandler, notFoundHandler := setupHttpHandlers(db, emailRegex)
 
 	//HTTP server
 	host := GetenvWithDefault("HOST", "")
@@ -97,7 +100,7 @@ func main() {
 	mode := GetenvWithDefault("MARTINI_ENV", "development")
 
 	log.Printf("Running HTTP server on %s:%s in mode %s", host, port, mode)
-	runHttpServer(createHandler, notFoundHandler)
+	runHttpServer(createHandler, errorHandler, notFoundHandler)
 }
 
 func processIpAddress(remoteAddr string) string {
@@ -114,7 +117,7 @@ func processIpAddress(remoteAddr string) string {
 	return ip2.String()
 }
 
-func setupHttpHandlers(db *sql.DB, emailRegex *regexp.Regexp) (CreateHandler, NotFoundHandler) {
+func setupHttpHandlers(db *sql.DB, emailRegex *regexp.Regexp) (CreateHandler, ErrorHandler, NotFoundHandler) {
 	createHandler := func(res http.ResponseWriter, req *http.Request, prospect ProspectForm) (int, string) {
 		prospect.IpAddress = processIpAddress(req.RemoteAddr)
 		prospect.Referrer = req.Referer()
@@ -129,7 +132,7 @@ func setupHttpHandlers(db *sql.DB, emailRegex *regexp.Regexp) (CreateHandler, No
 		log.Printf("Received new prospect: %#v", prospect)
 
 		req.Close = true
-		res.Header().Set("Content-Type", "application/json")
+		res.Header().Set(CONTENT_TYPE_NAME, JSON_CONTENT_TYPE)
 		var response Response
 
 		if emailRegex.MatchString(prospect.Email) {
@@ -155,9 +158,51 @@ func setupHttpHandlers(db *sql.DB, emailRegex *regexp.Regexp) (CreateHandler, No
 		return response.Code, string(jsonStr)
 	}
 
+	errorHandler := func(errors binding.Errors, res http.ResponseWriter) {
+		if len(errors) > 0 {
+			var userFieldsMsg string
+			for _, err := range errors {
+				var fieldsMsg string
+				for _, field := range err.Fields() {
+					userFieldsMsg += fmt.Sprintf("%s, ", field)
+					fieldsMsg += userFieldsMsg
+				}
+				fieldsMsg = strings.TrimSuffix(fieldsMsg, ", ")
+
+				log.Printf("Error received. Message: %s, Kind: %s, Fields: %s", err.Error(), err.Kind(), fieldsMsg)
+			}
+			userFieldsMsg = strings.TrimSuffix(userFieldsMsg, ", ")
+
+			res.Header().Set(CONTENT_TYPE_NAME, JSON_CONTENT_TYPE)
+			var response Response
+
+			if errors.Has(binding.RequiredError) {
+				res.WriteHeader(http.StatusBadRequest)
+				responseStr := fmt.Sprintf("Missing required field(s): %s", userFieldsMsg)
+				response = Response{http.StatusBadRequest, responseStr}
+			} else if errors.Has(binding.ContentTypeError) {
+				res.WriteHeader(http.StatusUnsupportedMediaType)
+				response = Response{http.StatusUnsupportedMediaType, "Invalid content type"}
+			} else if errors.Has(binding.DeserializationError) {
+				res.WriteHeader(http.StatusBadRequest)
+				response = Response{http.StatusBadRequest, "Deserialization error"}
+			} else if errors.Has(binding.TypeError) {
+				res.WriteHeader(http.StatusBadRequest)
+				response = Response{http.StatusBadRequest, "Type error"}
+			} else {
+				res.WriteHeader(http.StatusBadRequest)
+				response = Response{http.StatusBadRequest, "Unknown error"}
+			}
+
+			log.Print(response.Message)
+			jsonStr, _ := json.Marshal(response)
+			res.Write(jsonStr)
+		}
+	}
+
 	notFoundHandler := func(res http.ResponseWriter, req *http.Request) (int, string) {
 		req.Close = true
-		res.Header().Set("Content-Type", "application/json")
+		res.Header().Set(CONTENT_TYPE_NAME, JSON_CONTENT_TYPE)
 		responseStr := fmt.Sprintf("URL Not Found %s", req.URL)
 		response := Response{http.StatusNotFound, responseStr}
 		log.Print(responseStr)
@@ -165,7 +210,7 @@ func setupHttpHandlers(db *sql.DB, emailRegex *regexp.Regexp) (CreateHandler, No
 		return response.Code, string(jsonStr)
 	}
 
-	return createHandler, notFoundHandler
+	return createHandler, errorHandler, notFoundHandler
 }
 
 func addProspect(db *sql.DB, prospect ProspectForm) error {
@@ -241,7 +286,7 @@ func addProspect(db *sql.DB, prospect ProspectForm) error {
 	return err
 }
 
-func runHttpServer(createHandler CreateHandler, notFoundHandler NotFoundHandler) {
+func runHttpServer(createHandler CreateHandler, errorHandler ErrorHandler, notFoundHandler NotFoundHandler) {
 	martini_ := martini.Classic()
 
 	allowCORSHandler := cors.Allow(&cors.Options{
@@ -251,7 +296,7 @@ func runHttpServer(createHandler CreateHandler, notFoundHandler NotFoundHandler)
 		AllowCredentials: true,
 	})
 
-	martini_.Post(POST_URL, allowCORSHandler, binding.Bind(ProspectForm{}), createHandler)
+	martini_.Post(POST_URL, allowCORSHandler, binding.Form(ProspectForm{}), errorHandler, createHandler)
 	martini_.NotFound(notFoundHandler)
 	martini_.Run()
 }
