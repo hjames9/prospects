@@ -11,6 +11,7 @@ CREATE TABLE prospects
     phone_number VARCHAR NULL,
     age SMALLINT NULL,
     gender GENDER NULL,
+    zip_code VARCHAR NULL,
     language VARCHAR NULL,
     user_agent VARCHAR NULL,
     cookies VARCHAR[] NULL,
@@ -24,7 +25,7 @@ CREATE TABLE prospects
 
 CREATE VIEW sneezers
 AS
-SELECT MAX(id) AS id, app_name, email, MAX(first_name) AS first_name, MAX(last_name) AS last_name, MAX(phone_number) AS phone_number, MAX(age) AS age, MAX(gender) AS gender, MAX(user_agent) AS user_agent, MAX(created_at) AS created_at FROM prospects WHERE is_valid = TRUE AND was_processed = TRUE GROUP BY app_name, email;
+SELECT MAX(id) AS id, app_name, email, MAX(first_name) AS first_name, MAX(last_name) AS last_name, MAX(phone_number) AS phone_number, MAX(age) AS age, MAX(gender) AS gender, MAX(zip_code) AS zip_code, MAX(user_agent) AS user_agent, MAX(created_at) AS created_at FROM prospects WHERE is_valid = TRUE AND was_processed = TRUE GROUP BY app_name, email;
 
 CREATE INDEX p_app_name_idx ON prospects(app_name);
 

@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	QUERY             = "INSERT INTO prospects (app_name, email, referrer, first_name, last_name, phone_number, age, gender, language, user_agent, cookies, geolocation, ip_address, miscellaneous, created_at) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, ARRAY[$11], POINT($12, $13), $14, $15, $16) RETURNING id;"
+	QUERY             = "INSERT INTO prospects (app_name, email, referrer, first_name, last_name, phone_number, age, gender, zip_code, language, user_agent, cookies, geolocation, ip_address, miscellaneous, created_at) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, ARRAY[$12], POINT($13, $14), $15, $16, $17) RETURNING id;"
 	EMAIL_REGEX       = "([\\w\\d\\.]+)@[\\w\\d\\.]+"
 	POST_URL          = "/prospects"
 	DB_DRIVER         = "postgres"
@@ -37,6 +37,7 @@ type ProspectForm struct {
 	PhoneNumber   string `form:"phonenumber"`
 	Age           int64  `form:"age"`
 	Gender        string `form:"gender"`
+	ZipCode       string `form:"zipcode"`
 	Language      string `form:"language"`
 	UserAgent     string
 	Cookies       string
@@ -246,6 +247,11 @@ func addProspect(db *sql.DB, prospect ProspectForm) error {
 		gender = sql.NullString{prospect.Gender, true}
 	}
 
+	var zipCode sql.NullString
+	if len(prospect.ZipCode) != 0 {
+		zipCode = sql.NullString{prospect.ZipCode, true}
+	}
+
 	var language sql.NullString
 	if len(prospect.Language) != 0 {
 		language = sql.NullString{prospect.Language, true}
@@ -279,7 +285,7 @@ func addProspect(db *sql.DB, prospect ProspectForm) error {
 	}
 
 	var lastInsertId int
-	err := db.QueryRow(QUERY, prospect.AppName, prospect.Email, referrer, firstName, lastName, phoneNumber, age, gender, language, userAgent, cookies, latitude, longitude, ipAddress, miscellaneous, time.Now()).Scan(&lastInsertId)
+	err := db.QueryRow(QUERY, prospect.AppName, prospect.Email, referrer, firstName, lastName, phoneNumber, age, gender, zipCode, language, userAgent, cookies, latitude, longitude, ipAddress, miscellaneous, time.Now()).Scan(&lastInsertId)
 
 	if nil == err {
 		log.Printf("New prospect id = %d", lastInsertId)
