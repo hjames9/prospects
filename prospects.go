@@ -56,6 +56,19 @@ type CreateHandler func(http.ResponseWriter, *http.Request, ProspectForm) (int, 
 type ErrorHandler func(binding.Errors, http.ResponseWriter)
 type NotFoundHandler func(http.ResponseWriter, *http.Request) (int, string)
 
+var emailRegex *regexp.Regexp
+
+func (prospect ProspectForm) Validate(errors binding.Errors, req *http.Request) binding.Errors {
+	if len(prospect.Email) > 0 && !emailRegex.MatchString(prospect.Email) {
+		errors = append(errors, binding.Error{
+			FieldNames:     []string{"email"},
+			Classification: binding.TypeError,
+			Message:        "Invalid email format specified",
+		})
+	}
+	return errors
+}
+
 func GetenvWithDefault(envKey string, defaultVal string) string {
 	envVal := os.Getenv(envKey)
 
@@ -101,15 +114,16 @@ func main() {
 	defer db.Close()
 
 	//Regular expression
+	var err error
 	log.Print("Compiling e-mail regular expression")
-	emailRegex, err := regexp.Compile(EMAIL_REGEX)
+	emailRegex, err = regexp.Compile(EMAIL_REGEX)
 	if nil != err {
 		log.Fatalf("Regex compilation failed for %s", EMAIL_REGEX)
 	}
 
 	//HTTP handlers
 	log.Print("Preparing HTTP handlers")
-	createHandler, errorHandler, notFoundHandler := setupHttpHandlers(db, emailRegex)
+	createHandler, errorHandler, notFoundHandler := setupHttpHandlers(db)
 
 	//HTTP server
 	host := GetenvWithDefault("HOST", "")
@@ -120,7 +134,7 @@ func main() {
 	runHttpServer(createHandler, errorHandler, notFoundHandler)
 }
 
-func setupHttpHandlers(db *sql.DB, emailRegex *regexp.Regexp) (CreateHandler, ErrorHandler, NotFoundHandler) {
+func setupHttpHandlers(db *sql.DB) (CreateHandler, ErrorHandler, NotFoundHandler) {
 	createHandler := func(res http.ResponseWriter, req *http.Request, prospect ProspectForm) (int, string) {
 		prospect.IpAddress = processIpAddress(req.RemoteAddr)
 		prospect.Referrer = req.Referer()
@@ -138,22 +152,16 @@ func setupHttpHandlers(db *sql.DB, emailRegex *regexp.Regexp) (CreateHandler, Er
 		res.Header().Set(CONTENT_TYPE_NAME, JSON_CONTENT_TYPE)
 		var response Response
 
-		if emailRegex.MatchString(prospect.Email) {
-			err := addProspect(db, prospect)
-			if nil != err {
-				responseStr := fmt.Sprintf("Could not add prospect due to server error: e-mail %s", prospect.Email)
-				response = Response{http.StatusInternalServerError, responseStr}
-				log.Print(responseStr)
-				log.Print(err)
-				log.Printf("%d database connections opened", db.Stats().OpenConnections)
-			} else {
-				responseStr := fmt.Sprintf("Successfully added prospect. E-mail %s", prospect.Email)
-				response = Response{http.StatusCreated, responseStr}
-				log.Print(responseStr)
-			}
+		err := addProspect(db, prospect)
+		if nil != err {
+			responseStr := fmt.Sprintf("Could not add prospect due to server error: e-mail %s", prospect.Email)
+			response = Response{http.StatusInternalServerError, responseStr}
+			log.Print(responseStr)
+			log.Print(err)
+			log.Printf("%d database connections opened", db.Stats().OpenConnections)
 		} else {
-			responseStr := fmt.Sprintf("Could not add prospect. E-mail address %s is invalid", prospect.Email)
-			response = Response{http.StatusBadRequest, responseStr}
+			responseStr := fmt.Sprintf("Successfully added prospect. E-mail %s", prospect.Email)
+			response = Response{http.StatusCreated, responseStr}
 			log.Print(responseStr)
 		}
 
@@ -164,6 +172,7 @@ func setupHttpHandlers(db *sql.DB, emailRegex *regexp.Regexp) (CreateHandler, Er
 	errorHandler := func(errors binding.Errors, res http.ResponseWriter) {
 		if len(errors) > 0 {
 			var fieldsMsg string
+
 			for _, err := range errors {
 				for _, field := range err.Fields() {
 					fieldsMsg += fmt.Sprintf("%s, ", field)
