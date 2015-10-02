@@ -163,25 +163,25 @@ func setupHttpHandlers(db *sql.DB, emailRegex *regexp.Regexp) (CreateHandler, Er
 
 	errorHandler := func(errors binding.Errors, res http.ResponseWriter) {
 		if len(errors) > 0 {
-			var userFieldsMsg string
+			var fieldsMsg string
 			for _, err := range errors {
-				var fieldsMsg string
 				for _, field := range err.Fields() {
-					userFieldsMsg += fmt.Sprintf("%s, ", field)
-					fieldsMsg += userFieldsMsg
+					fieldsMsg += fmt.Sprintf("%s, ", field)
 				}
-				fieldsMsg = strings.TrimSuffix(fieldsMsg, ", ")
 
-				log.Printf("Error received. Message: %s, Kind: %s, Fields: %s", err.Error(), err.Kind(), fieldsMsg)
+				log.Printf("Error received. Message: %s, Kind: %s", err.Error(), err.Kind())
 			}
-			userFieldsMsg = strings.TrimSuffix(userFieldsMsg, ", ")
+
+			fieldsMsg = strings.TrimSuffix(fieldsMsg, ", ")
+
+			log.Printf("Error received. Fields: %s", fieldsMsg)
 
 			res.Header().Set(CONTENT_TYPE_NAME, JSON_CONTENT_TYPE)
 			var response Response
 
 			if errors.Has(binding.RequiredError) {
 				res.WriteHeader(http.StatusBadRequest)
-				responseStr := fmt.Sprintf("Missing required field(s): %s", userFieldsMsg)
+				responseStr := fmt.Sprintf("Missing required field(s): %s", fieldsMsg)
 				response = Response{http.StatusBadRequest, responseStr}
 			} else if errors.Has(binding.ContentTypeError) {
 				res.WriteHeader(http.StatusUnsupportedMediaType)
