@@ -66,6 +66,20 @@ func GetenvWithDefault(envKey string, defaultVal string) string {
 	return envVal
 }
 
+func processIpAddress(remoteAddr string) string {
+	ip, _, err := net.SplitHostPort(remoteAddr)
+	if err == nil {
+		return ip
+	}
+
+	ip2 := net.ParseIP(remoteAddr)
+	if ip2 == nil {
+		return ""
+	}
+
+	return ip2.String()
+}
+
 func main() {
 	//Database connection
 	log.Print("Enabling database connectivity")
@@ -104,20 +118,6 @@ func main() {
 
 	log.Printf("Running HTTP server on %s:%s in mode %s", host, port, mode)
 	runHttpServer(createHandler, errorHandler, notFoundHandler)
-}
-
-func processIpAddress(remoteAddr string) string {
-	ip, _, err := net.SplitHostPort(remoteAddr)
-	if err == nil {
-		return ip
-	}
-
-	ip2 := net.ParseIP(remoteAddr)
-	if ip2 == nil {
-		return ""
-	}
-
-	return ip2.String()
 }
 
 func setupHttpHandlers(db *sql.DB, emailRegex *regexp.Regexp) (CreateHandler, ErrorHandler, NotFoundHandler) {
