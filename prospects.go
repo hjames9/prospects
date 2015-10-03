@@ -70,9 +70,17 @@ func (prospect ProspectForm) Validate(errors binding.Errors, req *http.Request) 
 
 	if len(prospect.Miscellaneous) != 0 && !isJSON(prospect.Miscellaneous) {
 		errors = append(errors, binding.Error{
-			FieldNames:     []string{"Miscellaneous"},
+			FieldNames:     []string{"miscellaneous"},
 			Classification: binding.TypeError,
 			Message:        "Invalid json format specified for miscellaneous",
+		})
+	}
+
+	if len(prospect.Gender) != 0 && (prospect.Gender != "male" && prospect.Gender != "female") {
+		errors = append(errors, binding.Error{
+			FieldNames:     []string{"gender"},
+			Classification: binding.TypeError,
+			Message:        "Invalid format specified for gender, must be male or female",
 		})
 	}
 
