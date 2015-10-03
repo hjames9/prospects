@@ -85,6 +85,14 @@ func (prospect ProspectForm) Validate(errors binding.Errors, req *http.Request) 
 		})
 	}
 
+	if prospect.Age < 0 || prospect.Age > 200 {
+		errors = append(errors, binding.Error{
+			FieldNames:     []string{"age"},
+			Classification: binding.TypeError,
+			Message:        "Invalid age specified",
+		})
+	}
+
 	if len(prospect.Gender) != 0 && (prospect.Gender != "male" && prospect.Gender != "female") {
 		errors = append(errors, binding.Error{
 			FieldNames:     []string{"gender"},
