@@ -67,6 +67,15 @@ func (prospect ProspectForm) Validate(errors binding.Errors, req *http.Request) 
 			Message:        "Invalid email format specified",
 		})
 	}
+
+	if len(prospect.Miscellaneous) != 0 && !isJSON(prospect.Miscellaneous) {
+		errors = append(errors, binding.Error{
+			FieldNames:     []string{"Miscellaneous"},
+			Classification: binding.TypeError,
+			Message:        "Invalid json format specified for miscellaneous",
+		})
+	}
+
 	return errors
 }
 
@@ -92,6 +101,11 @@ func processIpAddress(remoteAddr string) string {
 	}
 
 	return ip2.String()
+}
+
+func isJSON(str string) bool {
+	var js map[string]interface{}
+	return json.Unmarshal([]byte(str), &js) == nil
 }
 
 func main() {
