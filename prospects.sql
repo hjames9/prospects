@@ -6,6 +6,7 @@ CREATE TABLE prospects
     app_name VARCHAR NOT NULL,
     email VARCHAR NOT NULL,
     referrer VARCHAR NULL,
+    page_referrer VARCHAR NULL,
     first_name VARCHAR NULL,
     last_name VARCHAR NULL,
     phone_number VARCHAR NULL,
@@ -31,6 +32,6 @@ CREATE INDEX p_app_name_idx ON prospects(app_name);
 
 CREATE INDEX p_email_idx ON prospects(email);
 
-CREATE INDEX p_referrer_idx ON prospects(referrer);
+CREATE INDEX p_referrer_idx ON prospects(page_referrer);
 
 CREATE INDEX p_misc_idx ON prospects USING GIN(miscellaneous);

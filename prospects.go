@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	QUERY             = "INSERT INTO prospects (app_name, email, referrer, first_name, last_name, phone_number, age, gender, zip_code, language, user_agent, cookies, geolocation, ip_address, miscellaneous, created_at) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, ARRAY[$12], POINT($13, $14), $15, $16, $17) RETURNING id;"
+	QUERY             = "INSERT INTO prospects (app_name, email, referrer, page_referrer, first_name, last_name, phone_number, age, gender, zip_code, language, user_agent, cookies, geolocation, ip_address, miscellaneous, created_at) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, ARRAY[$13], POINT($14, $15), $16, $17, $18) RETURNING id;"
 	EMAIL_REGEX       = "([\\w\\d\\.]+)@[\\w\\d\\.]+"
 	POST_URL          = "/prospects"
 	DB_DRIVER         = "postgres"
@@ -31,6 +31,7 @@ const (
 type ProspectForm struct {
 	AppName       string `form:"appname" binding:"required"`
 	Referrer      string
+	PageReferrer  string `form:"pagereferrer"`
 	FirstName     string `form:"firstname"`
 	LastName      string `form:"lastname"`
 	Email         string `form:"email" binding:"required"`
@@ -246,6 +247,11 @@ func addProspect(db *sql.DB, prospect ProspectForm) error {
 		referrer = sql.NullString{prospect.Referrer, true}
 	}
 
+	var pageReferrer sql.NullString
+	if len(prospect.PageReferrer) != 0 {
+		pageReferrer = sql.NullString{prospect.PageReferrer, true}
+	}
+
 	var age sql.NullInt64
 	if prospect.Age != 0 {
 		age = sql.NullInt64{prospect.Age, true}
@@ -294,7 +300,7 @@ func addProspect(db *sql.DB, prospect ProspectForm) error {
 	}
 
 	var lastInsertId int
-	err := db.QueryRow(QUERY, prospect.AppName, prospect.Email, referrer, firstName, lastName, phoneNumber, age, gender, zipCode, language, userAgent, cookies, latitude, longitude, ipAddress, miscellaneous, time.Now()).Scan(&lastInsertId)
+	err := db.QueryRow(QUERY, prospect.AppName, prospect.Email, referrer, pageReferrer, firstName, lastName, phoneNumber, age, gender, zipCode, language, userAgent, cookies, latitude, longitude, ipAddress, miscellaneous, time.Now()).Scan(&lastInsertId)
 
 	if nil == err {
 		log.Printf("New prospect id = %d", lastInsertId)

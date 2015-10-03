@@ -93,6 +93,7 @@
 
             if(document.referrer) {
                 console.log("Referrer: " + document.referrer);
+                queryStr += "&pagereferrer=" + encodeURIComponent(document.referrer);
             } else {
                 console.log("Page was not referred");
             }
