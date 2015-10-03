@@ -26,6 +26,7 @@ const (
 	DB_DRIVER         = "postgres"
 	CONTENT_TYPE_NAME = "Content-Type"
 	JSON_CONTENT_TYPE = "application/json"
+	STRING_SIZE_LIMIT = 500
 )
 
 type ProspectForm struct {
@@ -61,46 +62,65 @@ var emailRegex *regexp.Regexp
 var appNames map[string]bool
 
 func (prospect ProspectForm) Validate(errors binding.Errors, req *http.Request) binding.Errors {
-	if len(prospect.AppName) > 0 && appNames != nil && !appNames[prospect.AppName] {
-		errors = append(errors, binding.Error{
-			FieldNames:     []string{"appname"},
-			Classification: binding.TypeError,
-			Message:        "Invalid appname specified",
-		})
+	errors = validateSizeLimit(prospect.AppName, "appname", STRING_SIZE_LIMIT, errors)
+	errors = validateSizeLimit(prospect.Referrer, "referrer", STRING_SIZE_LIMIT, errors)
+	errors = validateSizeLimit(prospect.PageReferrer, "pagereferrer", STRING_SIZE_LIMIT, errors)
+	errors = validateSizeLimit(prospect.FirstName, "firstname", STRING_SIZE_LIMIT, errors)
+	errors = validateSizeLimit(prospect.LastName, "lastname", STRING_SIZE_LIMIT, errors)
+	errors = validateSizeLimit(prospect.Email, "email", STRING_SIZE_LIMIT, errors)
+	errors = validateSizeLimit(prospect.PhoneNumber, "phonenumber", STRING_SIZE_LIMIT, errors)
+	errors = validateSizeLimit(prospect.Gender, "gender", STRING_SIZE_LIMIT, errors)
+	errors = validateSizeLimit(prospect.ZipCode, "zipcode", STRING_SIZE_LIMIT, errors)
+	errors = validateSizeLimit(prospect.Language, "language", STRING_SIZE_LIMIT, errors)
+	errors = validateSizeLimit(prospect.UserAgent, "useragent", STRING_SIZE_LIMIT, errors)
+	errors = validateSizeLimit(prospect.Cookies, "cookies", STRING_SIZE_LIMIT, errors)
+	errors = validateSizeLimit(prospect.IpAddress, "ipaddress", STRING_SIZE_LIMIT, errors)
+	errors = validateSizeLimit(prospect.Miscellaneous, "miscellaneous", STRING_SIZE_LIMIT, errors)
+
+	if len(errors) == 0 {
+		if len(prospect.AppName) > 0 && appNames != nil && !appNames[prospect.AppName] {
+			message := fmt.Sprintf("Invalid appname \"%s\" specified", prospect.AppName)
+			errors = addError(errors, []string{"appname"}, binding.TypeError, message)
+		}
+
+		if len(prospect.Email) > 0 && !emailRegex.MatchString(prospect.Email) {
+			message := fmt.Sprintf("Invalid email \"%s\" format specified", prospect.Email)
+			errors = addError(errors, []string{"email"}, binding.TypeError, message)
+		}
+
+		if len(prospect.Miscellaneous) > 0 && !isJSON(prospect.Miscellaneous) {
+			message := fmt.Sprintf("Invalid format specified for miscellaneous \"%s\"", prospect.Miscellaneous)
+			errors = addError(errors, []string{"miscellaneous"}, binding.TypeError, message)
+		}
+
+		if prospect.Age < 0 || prospect.Age > 200 {
+			message := fmt.Sprintf("Invalid age \"%d\" specified", prospect.Age)
+			errors = addError(errors, []string{"age"}, binding.TypeError, message)
+		}
+
+		if len(prospect.Gender) > 0 && (prospect.Gender != "male" && prospect.Gender != "female") {
+			message := fmt.Sprintf("Invalid format specified for gender \"%s\", must be male or female", prospect.Gender)
+			errors = addError(errors, []string{"gender"}, binding.TypeError, message)
+		}
 	}
 
-	if len(prospect.Email) > 0 && !emailRegex.MatchString(prospect.Email) {
-		errors = append(errors, binding.Error{
-			FieldNames:     []string{"email"},
-			Classification: binding.TypeError,
-			Message:        "Invalid email format specified",
-		})
-	}
+	return errors
+}
 
-	if len(prospect.Miscellaneous) != 0 && !isJSON(prospect.Miscellaneous) {
-		errors = append(errors, binding.Error{
-			FieldNames:     []string{"miscellaneous"},
-			Classification: binding.TypeError,
-			Message:        "Invalid json format specified for miscellaneous",
-		})
+func validateSizeLimit(field string, fieldName string, sizeLimit int, errors binding.Errors) binding.Errors {
+	if len(field) > sizeLimit {
+		message := fmt.Sprintf("Field %s size %d is too large", fieldName, len(field))
+		errors = addError(errors, []string{fieldName}, binding.TypeError, message)
 	}
+	return errors
+}
 
-	if prospect.Age < 0 || prospect.Age > 200 {
-		errors = append(errors, binding.Error{
-			FieldNames:     []string{"age"},
-			Classification: binding.TypeError,
-			Message:        "Invalid age specified",
-		})
-	}
-
-	if len(prospect.Gender) != 0 && (prospect.Gender != "male" && prospect.Gender != "female") {
-		errors = append(errors, binding.Error{
-			FieldNames:     []string{"gender"},
-			Classification: binding.TypeError,
-			Message:        "Invalid format specified for gender, must be male or female",
-		})
-	}
-
+func addError(errors binding.Errors, fieldNames []string, classification string, message string) binding.Errors {
+	errors = append(errors, binding.Error{
+		FieldNames:     fieldNames,
+		Classification: classification,
+		Message:        message,
+	})
 	return errors
 }
 
@@ -255,7 +275,7 @@ func setupHttpHandlers(db *sql.DB) (CreateHandler, ErrorHandler, NotFoundHandler
 				response = Response{http.StatusBadRequest, "Deserialization error"}
 			} else if errors.Has(binding.TypeError) {
 				res.WriteHeader(http.StatusBadRequest)
-				response = Response{http.StatusBadRequest, "Type error"}
+				response = Response{http.StatusBadRequest, errors[0].Error()}
 			} else {
 				res.WriteHeader(http.StatusBadRequest)
 				response = Response{http.StatusBadRequest, "Unknown error"}
