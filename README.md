@@ -13,3 +13,4 @@ A Go-based http server to collect potential prospects and persist them to a Post
     HOST=localhost (default is all interfaces (blank))
     PORT=8080 (default is 3000)
     MARTINI_ENV=production (default is development)
+    APPLICATION_NAMES=tremont,laconia,paulding (default is empty for all allowable application names)

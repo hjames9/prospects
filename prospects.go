@@ -58,8 +58,17 @@ type ErrorHandler func(binding.Errors, http.ResponseWriter)
 type NotFoundHandler func(http.ResponseWriter, *http.Request) (int, string)
 
 var emailRegex *regexp.Regexp
+var appNames map[string]bool
 
 func (prospect ProspectForm) Validate(errors binding.Errors, req *http.Request) binding.Errors {
+	if len(prospect.AppName) > 0 && appNames != nil && !appNames[prospect.AppName] {
+		errors = append(errors, binding.Error{
+			FieldNames:     []string{"appname"},
+			Classification: binding.TypeError,
+			Message:        "Invalid appname specified",
+		})
+	}
+
 	if len(prospect.Email) > 0 && !emailRegex.MatchString(prospect.Email) {
 		errors = append(errors, binding.Error{
 			FieldNames:     []string{"email"},
@@ -135,6 +144,21 @@ func main() {
 
 	db := dbCredentials.GetDatabase()
 	defer db.Close()
+
+	//Allowable Application names
+	appNamesStr := os.Getenv("APPLICATION_NAMES")
+	if len(appNamesStr) > 0 {
+		appNames = make(map[string]bool)
+
+		appNamesArr := strings.Split(appNamesStr, ",")
+		for _, appName := range appNamesArr {
+			appNames[appName] = true
+		}
+
+		log.Printf("Allowable application names: %s", appNamesStr)
+	} else {
+		log.Print("Any application name available")
+	}
 
 	//Regular expression
 	var err error
