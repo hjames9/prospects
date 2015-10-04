@@ -102,6 +102,16 @@ func (prospect ProspectForm) Validate(errors binding.Errors, req *http.Request) 
 			message := fmt.Sprintf("Invalid format specified for gender \"%s\", must be male or female", prospect.Gender)
 			errors = addError(errors, []string{"gender"}, binding.TypeError, message)
 		}
+
+		if prospect.Latitude > 90.0 || prospect.Latitude < -90.0 {
+			message := fmt.Sprintf("Invalid latitude \"%f\" specified", prospect.Latitude)
+			errors = addError(errors, []string{"latitude"}, binding.TypeError, message)
+		}
+
+		if prospect.Longitude > 180.0 || prospect.Longitude < -180.0 {
+			message := fmt.Sprintf("Invalid longitude \"%f\" specified", prospect.Longitude)
+			errors = addError(errors, []string{"longitude"}, binding.TypeError, message)
+		}
 	}
 
 	return errors
