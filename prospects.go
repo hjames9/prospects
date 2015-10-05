@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	QUERY             = "INSERT INTO prospects (app_name, email, referrer, page_referrer, first_name, last_name, phone_number, age, gender, zip_code, language, user_agent, cookies, geolocation, ip_address, miscellaneous, created_at) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, ARRAY[$13], POINT($14, $15), $16, $17, $18) RETURNING id;"
+	QUERY             = "INSERT INTO prospects (app_name, email, referrer, page_referrer, first_name, last_name, phone_number, age, gender, zip_code, language, user_agent, cookies, geolocation, ip_address, miscellaneous, created_at) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, POINT($14, $15), $16, $17, $18) RETURNING id;"
 	EMAIL_REGEX       = "([\\w\\d\\.]+)@[\\w\\d\\.]+"
 	POST_URL          = "/prospects"
 	DB_DRIVER         = "postgres"
@@ -230,6 +230,10 @@ func setupHttpHandlers(db *sql.DB) (CreateHandler, ErrorHandler, NotFoundHandler
 			cookiesArr = append(cookiesArr, cookie.String())
 		}
 		prospect.Cookies = strings.Join(cookiesArr, ", ")
+
+		if len(prospect.Cookies) > 0 {
+			prospect.Cookies = fmt.Sprintf("{%s}", prospect.Cookies)
+		}
 
 		log.Printf("Received new prospect: %#v", prospect)
 
