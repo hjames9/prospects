@@ -24,7 +24,7 @@ CREATE TABLE prospects
     created_at TIMESTAMP NOT NULL,
     CHECK(email ~* '^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$'),
     CHECK(age >= 0 AND age <= 200),
-    CHECK(geolocation.x >= -90.0 AND geolocation.x <= 90.0 AND geolocation.y >= -180.0 AND geolocation.y <= 180.0)
+    CHECK(geolocation[0] >= -90.0 AND geolocation[0] <= 90.0 AND geolocation[1] >= -180.0 AND geolocation[1] <= 180.0)
 );
 
 CREATE VIEW sneezers
