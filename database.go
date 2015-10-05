@@ -43,7 +43,7 @@ func (dbCred DatabaseCredentials) GetString(useUrlArr ...bool) string {
 	if useUrl && len(dbCred.Url) > 0 {
 		dbInfo = dbCred.Url
 	} else {
-		dbInfo = fmt.Sprintf("user=%s password=%s dbname=%s host=%s port=%s", dbCred.User, dbCred.Password, dbCred.Name, dbCred.Host, dbCred.Port)
+		dbInfo = fmt.Sprintf("application_name=prospects user=%s password=%s dbname=%s host=%s port=%s", dbCred.User, dbCred.Password, dbCred.Name, dbCred.Host, dbCred.Port)
 	}
 
 	return dbInfo
