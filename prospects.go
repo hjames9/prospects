@@ -52,6 +52,7 @@ type ProspectForm struct {
 type Response struct {
 	Code    int
 	Message string
+	Id      int `json:",omitempty"`
 }
 
 type CreateHandler func(http.ResponseWriter, *http.Request, ProspectForm) (int, string)
@@ -241,16 +242,16 @@ func setupHttpHandlers(db *sql.DB) (CreateHandler, ErrorHandler, NotFoundHandler
 		res.Header().Set(CONTENT_TYPE_NAME, JSON_CONTENT_TYPE)
 		var response Response
 
-		err := addProspect(db, prospect)
+		id, err := addProspect(db, prospect)
 		if nil != err {
 			responseStr := fmt.Sprintf("Could not add prospect due to server error: e-mail %s", prospect.Email)
-			response = Response{http.StatusInternalServerError, responseStr}
+			response = Response{Code: http.StatusInternalServerError, Message: responseStr}
 			log.Print(responseStr)
 			log.Print(err)
 			log.Printf("%d database connections opened", db.Stats().OpenConnections)
 		} else {
 			responseStr := fmt.Sprintf("Successfully added prospect. E-mail %s", prospect.Email)
-			response = Response{http.StatusCreated, responseStr}
+			response = Response{Code: http.StatusCreated, Message: responseStr, Id: id}
 			log.Print(responseStr)
 		}
 
@@ -280,19 +281,19 @@ func setupHttpHandlers(db *sql.DB) (CreateHandler, ErrorHandler, NotFoundHandler
 			if errors.Has(binding.RequiredError) {
 				res.WriteHeader(http.StatusBadRequest)
 				responseStr := fmt.Sprintf("Missing required field(s): %s", fieldsMsg)
-				response = Response{http.StatusBadRequest, responseStr}
+				response = Response{Code: http.StatusBadRequest, Message: responseStr}
 			} else if errors.Has(binding.ContentTypeError) {
 				res.WriteHeader(http.StatusUnsupportedMediaType)
-				response = Response{http.StatusUnsupportedMediaType, "Invalid content type"}
+				response = Response{Code: http.StatusUnsupportedMediaType, Message: "Invalid content type"}
 			} else if errors.Has(binding.DeserializationError) {
 				res.WriteHeader(http.StatusBadRequest)
-				response = Response{http.StatusBadRequest, "Deserialization error"}
+				response = Response{Code: http.StatusBadRequest, Message: "Deserialization error"}
 			} else if errors.Has(binding.TypeError) {
 				res.WriteHeader(http.StatusBadRequest)
-				response = Response{http.StatusBadRequest, errors[0].Error()}
+				response = Response{Code: http.StatusBadRequest, Message: errors[0].Error()}
 			} else {
 				res.WriteHeader(http.StatusBadRequest)
-				response = Response{http.StatusBadRequest, "Unknown error"}
+				response = Response{Code: http.StatusBadRequest, Message: "Unknown error"}
 			}
 
 			log.Print(response.Message)
@@ -305,7 +306,7 @@ func setupHttpHandlers(db *sql.DB) (CreateHandler, ErrorHandler, NotFoundHandler
 		req.Close = true
 		res.Header().Set(CONTENT_TYPE_NAME, JSON_CONTENT_TYPE)
 		responseStr := fmt.Sprintf("URL Not Found %s", req.URL)
-		response := Response{http.StatusNotFound, responseStr}
+		response := Response{Code: http.StatusNotFound, Message: responseStr}
 		log.Print(responseStr)
 		jsonStr, _ := json.Marshal(response)
 		return response.Code, string(jsonStr)
@@ -314,7 +315,7 @@ func setupHttpHandlers(db *sql.DB) (CreateHandler, ErrorHandler, NotFoundHandler
 	return createHandler, errorHandler, notFoundHandler
 }
 
-func addProspect(db *sql.DB, prospect ProspectForm) error {
+func addProspect(db *sql.DB, prospect ProspectForm) (int, error) {
 	var firstName sql.NullString
 	if len(prospect.FirstName) != 0 {
 		firstName = sql.NullString{prospect.FirstName, true}
@@ -394,7 +395,7 @@ func addProspect(db *sql.DB, prospect ProspectForm) error {
 		log.Printf("New prospect id = %d", lastInsertId)
 	}
 
-	return err
+	return lastInsertId, err
 }
 
 func runHttpServer(createHandler CreateHandler, errorHandler ErrorHandler, notFoundHandler NotFoundHandler) {
