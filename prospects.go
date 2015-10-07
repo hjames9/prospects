@@ -21,7 +21,7 @@ import (
 
 const (
 	QUERY             = "INSERT INTO prospects (lead_id, app_name, email, used_pinterest, used_facebook, used_instagram, used_twitter, used_google, used_youtube, referrer, page_referrer, first_name, last_name, phone_number, age, gender, zip_code, language, user_agent, cookies, geolocation, ip_address, miscellaneous, created_at) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, POINT($21, $22), $23, $24, $25) RETURNING id;"
-	EMAIL_REGEX       = "([\\w\\d\\.]+)@[\\w\\d\\.]+"
+	EMAIL_REGEX       = "^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$"
 	UUID_REGEX        = "^[a-z0-9]{8}-[a-z0-9]{4}-[1-5][a-z0-9]{3}-[a-z0-9]{4}-[a-z0-9]{12}$"
 	POST_URL          = "/prospects"
 	DB_DRIVER         = "postgres"
