@@ -27,6 +27,8 @@ CREATE TABLE prospects
     CHECK(geolocation[0] >= -90.0 AND geolocation[0] <= 90.0 AND geolocation[1] >= -180.0 AND geolocation[1] <= 180.0)
 );
 
+ALTER SEQUENCE prospects_id_seq INCREMENT BY 7 START WITH 31337;
+
 CREATE VIEW sneezers
 AS
 SELECT MAX(id) AS id,
