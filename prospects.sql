@@ -1,6 +1,12 @@
+DROP SCHEMA IF EXISTS prospects CASCADE;
+
+CREATE SCHEMA IF NOT EXISTS prospects;
+
+SET search_path TO prospects,public;
+
 CREATE TYPE gender AS ENUM ('male', 'female');
 
-CREATE TABLE prospects
+CREATE TABLE leads
 (
     id SERIAL8 NOT NULL PRIMARY KEY,
     lead_id UUID NOT NULL,
@@ -31,11 +37,11 @@ CREATE TABLE prospects
     created_at TIMESTAMP NOT NULL,
     CHECK(email ~* '^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$'),
     CHECK(age >= 0 AND age <= 200),
-    CHECK(geolocation[0] >= -90.0 AND geolocation[0] <= 90.0 AND geolocation[1] >= -180.0 AND geolocation[1] <= 180.0)
+    CHECK(geolocation[0] >= -90.0 AND geolocation[0] <= 90.0 AND geolocation[1] >= -180.0 AND geolocation[1] <= 180.0),
     CHECK(email IS NOT NULL OR used_pinterest IS TRUE OR used_facebook IS TRUE OR used_instagram IS TRUE OR used_twitter IS TRUE OR used_google IS TRUE OR used_youtube IS TRUE)
 );
 
-ALTER SEQUENCE prospects_id_seq INCREMENT BY 7 START WITH 31337;
+ALTER SEQUENCE leads_id_seq INCREMENT BY 7 START WITH 31337 RESTART WITH 31337;
 
 CREATE VIEW sneezers
 AS
@@ -58,16 +64,16 @@ SELECT MAX(id) AS id,
        MAX(language) AS language,
        MAX(user_agent) AS user_agent,
        MAX(created_at) AS created_at
-FROM prospects
+FROM leads
 WHERE is_valid = TRUE AND was_processed = TRUE
 GROUP BY lead_id, app_name, email;
 
-CREATE INDEX p_lead_id_idx ON prospects(lead_id);
+CREATE INDEX p_lead_id_idx ON leads(lead_id);
 
-CREATE INDEX p_app_name_idx ON prospects(app_name);
+CREATE INDEX p_app_name_idx ON leads(app_name);
 
-CREATE INDEX p_email_idx ON prospects(email);
+CREATE INDEX p_email_idx ON leads(email);
 
-CREATE INDEX p_referrer_idx ON prospects(page_referrer);
+CREATE INDEX p_referrer_idx ON leads(page_referrer);
 
-CREATE INDEX p_misc_idx ON prospects USING GIN(miscellaneous);
+CREATE INDEX p_misc_idx ON leads USING GIN(miscellaneous);
