@@ -16,7 +16,14 @@
         <input type="text" name="lastname"><br>
         E-mail:<br>
         <input type="email" name="email"><br>
+        <input type="checkbox" name="pinterest" value="true"> Pinterest
+        <input type="checkbox" name="facebook" value="true"> Facebook
+        <input type="checkbox" name="instagram" value="true"> Instagram
+        <input type="checkbox" name="twitter" value="true"> Twitter
+        <input type="checkbox" name="google" value="true"> Google
+        <input type="checkbox" name="youtube" value="true"> Youtube
         <input type="hidden" name="appname" value="testapp"/>
+        <br>
         <input type="submit" value="Submit">
         <input type="button" value="Clear">
     </form>
@@ -76,6 +83,13 @@
         var emailText = null;
         var clearButton = null;
 
+        var pinterestBox = null;
+        var facebookBox = null;
+        var instagramBox = null;
+        var twitterBox = null;
+        var googleBox = null;
+        var youtubeBox = null;
+
         for(var iter = 0; iter < inputs.length; ++iter)
         {
             if(inputs[iter].name == "appname")
@@ -86,6 +100,18 @@
                 lastnameText = inputs[iter];
             else if(inputs[iter].name == "email")
                 emailText = inputs[iter];
+            else if(inputs[iter].name == "pinterest")
+                pinterestBox = inputs[iter];
+            else if(inputs[iter].name == "facebook")
+                facebookBox = inputs[iter];
+            else if(inputs[iter].name == "instagram")
+                instagramBox = inputs[iter];
+            else if(inputs[iter].name == "twitter")
+                twitterBox = inputs[iter];
+            else if(inputs[iter].name == "google")
+                googleBox = inputs[iter];
+            else if(inputs[iter].name == "youtube")
+                youtubeBox = inputs[iter];
             else if(inputs[iter].value.toLowerCase() == "clear")
                 clearButton = inputs[iter];
         };
@@ -116,6 +142,24 @@
             var emailStr = emailText.name + "=" + encodeURIComponent(emailText.value);
 
             var queryStr = appnameStr + "&" + firstnameStr + "&" + lastnameStr + "&" + emailStr;
+
+            if(pinterestBox.checked)
+                queryStr += "&" + pinterestBox.name + "=" + encodeURIComponent(pinterestBox.value);
+
+            if(facebookBox.checked)
+                queryStr += "&" + facebookBox.name + "=" + encodeURIComponent(facebookBox.value);
+
+            if(instagramBox.checked)
+                queryStr += "&" + instagramBox.name + "=" + encodeURIComponent(instagramBox.value);
+
+            if(twitterBox.checked)
+                queryStr += "&" + twitterBox.name + "=" + encodeURIComponent(twitterBox.value);
+
+            if(googleBox.checked)
+                queryStr += "&" + googleBox.name + "=" + encodeURIComponent(googleBox.value);
+
+            if(youtubeBox.checked)
+                queryStr += "&" + youtubeBox.name + "=" + encodeURIComponent(youtubeBox.value);
 
             if(document.referrer) {
                 console.log("Referrer: " + document.referrer);

@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	QUERY             = "INSERT INTO prospects (lead_id, app_name, email, referrer, page_referrer, first_name, last_name, phone_number, age, gender, zip_code, language, user_agent, cookies, geolocation, ip_address, miscellaneous, created_at) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, POINT($15, $16), $17, $18, $19) RETURNING id;"
+	QUERY             = "INSERT INTO prospects (lead_id, app_name, email, used_pinterest, used_facebook, used_instagram, used_twitter, used_google, used_youtube, referrer, page_referrer, first_name, last_name, phone_number, age, gender, zip_code, language, user_agent, cookies, geolocation, ip_address, miscellaneous, created_at) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, POINT($21, $22), $23, $24, $25) RETURNING id;"
 	EMAIL_REGEX       = "([\\w\\d\\.]+)@[\\w\\d\\.]+"
 	UUID_REGEX        = "^[a-z0-9]{8}-[a-z0-9]{4}-[1-5][a-z0-9]{3}-[a-z0-9]{4}-[a-z0-9]{12}$"
 	POST_URL          = "/prospects"
@@ -37,7 +37,13 @@ type ProspectForm struct {
 	PageReferrer  string `form:"pagereferrer"`
 	FirstName     string `form:"firstname"`
 	LastName      string `form:"lastname"`
-	Email         string `form:"email" binding:"required"`
+	Email         string `form:"email"`
+	Pinterest     bool   `form:"pinterest"`
+	Facebook      bool   `form:"facebook"`
+	Instagram     bool   `form:"instagram"`
+	Twitter       bool   `form:"twitter"`
+	Google        bool   `form:"google"`
+	Youtube       bool   `form:"youtube"`
 	PhoneNumber   string `form:"phonenumber"`
 	Age           int64  `form:"age"`
 	Gender        string `form:"gender"`
@@ -91,6 +97,11 @@ func (prospect ProspectForm) Validate(errors binding.Errors, req *http.Request) 
 		if len(prospect.LeadId) > 0 && !uuidRegex.MatchString(prospect.LeadId) {
 			message := fmt.Sprintf("Invalid uuid \"%s\" format specified", prospect.LeadId)
 			errors = addError(errors, []string{"leadid"}, binding.TypeError, message)
+		}
+
+		invalidId := len(prospect.Email) == 0 && !prospect.Pinterest && !prospect.Facebook && !prospect.Instagram && !prospect.Twitter && !prospect.Google && !prospect.Youtube
+		if invalidId {
+			errors = addError(errors, []string{"email", "pinterest", "facebook", "instagram", "twitter", "google", "youtube"}, binding.RequiredError, "At least one of email, pinterest, facebook, instagram, twitter, google or youtube is required")
 		}
 
 		if len(prospect.Email) > 0 && !emailRegex.MatchString(prospect.Email) {
@@ -267,7 +278,7 @@ func setupHttpHandlers(db *sql.DB) (CreateHandler, ErrorHandler, NotFoundHandler
 			log.Print(err)
 			log.Printf("%d database connections opened", db.Stats().OpenConnections)
 		} else {
-			responseStr := fmt.Sprintf("Successfully added prospect. E-mail %s", prospect.Email)
+			responseStr := "Successfully added prospect"
 			response = Response{Code: http.StatusCreated, Message: responseStr, Id: id}
 			log.Print(responseStr)
 		}
@@ -333,6 +344,11 @@ func setupHttpHandlers(db *sql.DB) (CreateHandler, ErrorHandler, NotFoundHandler
 }
 
 func addProspect(db *sql.DB, prospect ProspectForm) (int, error) {
+	var email sql.NullString
+	if len(prospect.Email) != 0 {
+		email = sql.NullString{prospect.Email, true}
+	}
+
 	var firstName sql.NullString
 	if len(prospect.FirstName) != 0 {
 		firstName = sql.NullString{prospect.FirstName, true}
@@ -406,7 +422,7 @@ func addProspect(db *sql.DB, prospect ProspectForm) (int, error) {
 	}
 
 	var lastInsertId int
-	err := db.QueryRow(QUERY, prospect.LeadId, prospect.AppName, prospect.Email, referrer, pageReferrer, firstName, lastName, phoneNumber, age, gender, zipCode, language, userAgent, cookies, latitude, longitude, ipAddress, miscellaneous, time.Now()).Scan(&lastInsertId)
+	err := db.QueryRow(QUERY, prospect.LeadId, prospect.AppName, email, prospect.Pinterest, prospect.Facebook, prospect.Instagram, prospect.Twitter, prospect.Google, prospect.Youtube, referrer, pageReferrer, firstName, lastName, phoneNumber, age, gender, zipCode, language, userAgent, cookies, latitude, longitude, ipAddress, miscellaneous, time.Now()).Scan(&lastInsertId)
 
 	if nil == err {
 		log.Printf("New prospect id = %d", lastInsertId)
