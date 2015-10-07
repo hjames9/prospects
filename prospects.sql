@@ -3,6 +3,7 @@ CREATE TYPE gender AS ENUM ('male', 'female');
 CREATE TABLE prospects
 (
     id SERIAL8 NOT NULL PRIMARY KEY,
+    lead_id UUID NOT NULL,
     app_name VARCHAR NOT NULL,
     email VARCHAR NOT NULL,
     referrer VARCHAR NULL,
@@ -32,6 +33,7 @@ ALTER SEQUENCE prospects_id_seq INCREMENT BY 7 START WITH 31337;
 CREATE VIEW sneezers
 AS
 SELECT MAX(id) AS id,
+       lead_id,
        app_name,
        email,
        MAX(first_name) AS first_name,
@@ -45,7 +47,9 @@ SELECT MAX(id) AS id,
        MAX(created_at) AS created_at
 FROM prospects
 WHERE is_valid = TRUE AND was_processed = TRUE
-GROUP BY app_name, email;
+GROUP BY lead_id, app_name, email;
+
+CREATE INDEX p_lead_id_idx ON prospects(lead_id);
 
 CREATE INDEX p_app_name_idx ON prospects(app_name);
 

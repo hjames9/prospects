@@ -20,8 +20,9 @@ import (
 )
 
 const (
-	QUERY             = "INSERT INTO prospects (app_name, email, referrer, page_referrer, first_name, last_name, phone_number, age, gender, zip_code, language, user_agent, cookies, geolocation, ip_address, miscellaneous, created_at) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, POINT($14, $15), $16, $17, $18) RETURNING id;"
+	QUERY             = "INSERT INTO prospects (lead_id, app_name, email, referrer, page_referrer, first_name, last_name, phone_number, age, gender, zip_code, language, user_agent, cookies, geolocation, ip_address, miscellaneous, created_at) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, POINT($15, $16), $17, $18, $19) RETURNING id;"
 	EMAIL_REGEX       = "([\\w\\d\\.]+)@[\\w\\d\\.]+"
+	UUID_REGEX        = "^[a-z0-9]{8}-[a-z0-9]{4}-[1-5][a-z0-9]{3}-[a-z0-9]{4}-[a-z0-9]{12}$"
 	POST_URL          = "/prospects"
 	DB_DRIVER         = "postgres"
 	CONTENT_TYPE_NAME = "Content-Type"
@@ -30,6 +31,7 @@ const (
 )
 
 type ProspectForm struct {
+	LeadId        string `form:"leadid" binding:"required"`
 	AppName       string `form:"appname" binding:"required"`
 	Referrer      string
 	PageReferrer  string `form:"pagereferrer"`
@@ -60,9 +62,11 @@ type ErrorHandler func(binding.Errors, http.ResponseWriter)
 type NotFoundHandler func(http.ResponseWriter, *http.Request) (int, string)
 
 var emailRegex *regexp.Regexp
+var uuidRegex *regexp.Regexp
 var appNames map[string]bool
 
 func (prospect ProspectForm) Validate(errors binding.Errors, req *http.Request) binding.Errors {
+	errors = validateSizeLimit(prospect.LeadId, "leadid", STRING_SIZE_LIMIT, errors)
 	errors = validateSizeLimit(prospect.AppName, "appname", STRING_SIZE_LIMIT, errors)
 	errors = validateSizeLimit(prospect.Referrer, "referrer", STRING_SIZE_LIMIT, errors)
 	errors = validateSizeLimit(prospect.PageReferrer, "pagereferrer", STRING_SIZE_LIMIT, errors)
@@ -82,6 +86,11 @@ func (prospect ProspectForm) Validate(errors binding.Errors, req *http.Request) 
 		if len(prospect.AppName) > 0 && appNames != nil && !appNames[prospect.AppName] {
 			message := fmt.Sprintf("Invalid appname \"%s\" specified", prospect.AppName)
 			errors = addError(errors, []string{"appname"}, binding.TypeError, message)
+		}
+
+		if len(prospect.LeadId) > 0 && !uuidRegex.MatchString(prospect.LeadId) {
+			message := fmt.Sprintf("Invalid uuid \"%s\" format specified", prospect.LeadId)
+			errors = addError(errors, []string{"leadid"}, binding.TypeError, message)
 		}
 
 		if len(prospect.Email) > 0 && !emailRegex.MatchString(prospect.Email) {
@@ -199,12 +208,20 @@ func main() {
 		log.Print("Any application name available")
 	}
 
-	//Regular expression
 	var err error
+
+	//UUID regular expression
+	log.Print("Compiling uuid regular expression")
+	uuidRegex, err = regexp.Compile(UUID_REGEX)
+	if nil != err {
+		log.Fatalf("UUID regex compilation failed for %s", UUID_REGEX)
+	}
+
+	//E-mail regular expression
 	log.Print("Compiling e-mail regular expression")
 	emailRegex, err = regexp.Compile(EMAIL_REGEX)
 	if nil != err {
-		log.Fatalf("Regex compilation failed for %s", EMAIL_REGEX)
+		log.Fatalf("E-mail regex compilation failed for %s", EMAIL_REGEX)
 	}
 
 	//HTTP handlers
@@ -389,7 +406,7 @@ func addProspect(db *sql.DB, prospect ProspectForm) (int, error) {
 	}
 
 	var lastInsertId int
-	err := db.QueryRow(QUERY, prospect.AppName, prospect.Email, referrer, pageReferrer, firstName, lastName, phoneNumber, age, gender, zipCode, language, userAgent, cookies, latitude, longitude, ipAddress, miscellaneous, time.Now()).Scan(&lastInsertId)
+	err := db.QueryRow(QUERY, prospect.LeadId, prospect.AppName, prospect.Email, referrer, pageReferrer, firstName, lastName, phoneNumber, age, gender, zipCode, language, userAgent, cookies, latitude, longitude, ipAddress, miscellaneous, time.Now()).Scan(&lastInsertId)
 
 	if nil == err {
 		log.Printf("New prospect id = %d", lastInsertId)
