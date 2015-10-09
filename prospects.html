@@ -6,16 +6,31 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Prospect test page</title>
+    <style type="text/css">
+        #middlename {
+            display: none;
+        }
+    </style>
 </head>
 
 <body>
     <form id="mainForm" action="http://localhost:3000/prospects" method="POST">
-        First name:<br>
-        <input type="text" name="firstname"><br>
-        Last name:<br>
-        <input type="text" name="lastname"><br>
-        E-mail:<br>
-        <input type="email" name="email"><br>
+        <div id="firstName">
+            <label>First name:</label><br>
+            <input type="text" name="firstname"><br>
+        </div>
+        <div id="middlename">
+            <label>Middle Name:</label><br>
+            <input type="text" name="middlename"><br>
+        </div>
+        <div id="lastname">
+            <label>Last name:</label><br>
+            <input type="text" name="lastname"><br>
+        </div>
+        <div id="email">
+            <label>E-mail:</label><br>
+            <input type="email" name="email"><br>
+        </div>
         <input type="checkbox" name="pinterest" value="true"> Pinterest
         <input type="checkbox" name="facebook" value="true"> Facebook
         <input type="checkbox" name="instagram" value="true"> Instagram
@@ -79,6 +94,7 @@
         var inputs = document.getElementsByTagName("input");
         var appnameText = null;
         var firstnameText = null;
+        var middlenameText = null;
         var lastnameText = null;
         var emailText = null;
         var clearButton = null;
@@ -96,6 +112,8 @@
                 appnameText = inputs[iter];
             else if(inputs[iter].name == "firstname")
                 firstnameText = inputs[iter];
+            else if(inputs[iter].name == "middlename")
+                middlenameText = inputs[iter];
             else if(inputs[iter].name == "lastname")
                 lastnameText = inputs[iter];
             else if(inputs[iter].name == "email")
@@ -133,15 +151,16 @@
             {
                 console.log(xmlHttp.responseText);
                 console.log(xmlHttp.status);
-                alert(xmlHttp.responseText);
+                alert("Server error");
             };
 
             var appnameStr = appnameText.name + "=" + encodeURIComponent(appnameText.value);
             var firstnameStr = firstnameText.name + "=" + encodeURIComponent(firstnameText.value);
+            var middlenameStr = middlenameText.name + "=" + encodeURIComponent(middlenameText.value);
             var lastnameStr = lastnameText.name + "=" + encodeURIComponent(lastnameText.value);
             var emailStr = emailText.name + "=" + encodeURIComponent(emailText.value);
 
-            var queryStr = appnameStr + "&" + firstnameStr + "&" + lastnameStr + "&" + emailStr;
+            var queryStr = appnameStr + "&" + firstnameStr + "&" + middlenameStr + "&" + lastnameStr + "&" + emailStr;
 
             if(pinterestBox.checked)
                 queryStr += "&" + pinterestBox.name + "=" + encodeURIComponent(pinterestBox.value);

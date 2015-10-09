@@ -28,6 +28,7 @@ const (
 	CONTENT_TYPE_NAME = "Content-Type"
 	JSON_CONTENT_TYPE = "application/json"
 	STRING_SIZE_LIMIT = 500
+	BotError          = "BotError"
 )
 
 type ProspectForm struct {
@@ -63,13 +64,50 @@ type Response struct {
 	Id      int `json:",omitempty"`
 }
 
+type RequestLocation int
+
+const (
+	Header RequestLocation = 1 << iota
+	Body
+)
+
+type BotDetection struct {
+	FieldLocation RequestLocation
+	FieldName     string
+	FieldValue    string
+	MustMatch     bool
+	PlayCoy       bool
+}
+
+func (botDetection BotDetection) IsBot(req *http.Request) bool {
+	var botField string
+
+	switch botDetection.FieldLocation {
+	case Header:
+		botField = req.Header.Get(botDetection.FieldName)
+		break
+	case Body:
+		botField = req.FormValue(botDetection.FieldName)
+		break
+	}
+
+	if botDetection.MustMatch && botDetection.FieldValue == botField {
+		return false
+	} else if !botDetection.MustMatch && botDetection.FieldValue != botField {
+		return false
+	}
+
+	return true
+}
+
 type CreateHandler func(http.ResponseWriter, *http.Request, ProspectForm) (int, string)
 type ErrorHandler func(binding.Errors, http.ResponseWriter)
 type NotFoundHandler func(http.ResponseWriter, *http.Request) (int, string)
 
-var emailRegex *regexp.Regexp
-var uuidRegex *regexp.Regexp
 var appNames map[string]bool
+var uuidRegex *regexp.Regexp
+var emailRegex *regexp.Regexp
+var botDetection BotDetection
 
 func (prospect ProspectForm) Validate(errors binding.Errors, req *http.Request) binding.Errors {
 	errors = validateSizeLimit(prospect.LeadId, "leadid", STRING_SIZE_LIMIT, errors)
@@ -133,6 +171,12 @@ func (prospect ProspectForm) Validate(errors binding.Errors, req *http.Request) 
 			message := fmt.Sprintf("Invalid longitude \"%f\" specified", prospect.Longitude)
 			errors = addError(errors, []string{"longitude"}, binding.TypeError, message)
 		}
+
+		if botDetection.IsBot(req) {
+			message := "Go away spambot! We've alerted the authorities"
+			errors = addError(errors, []string{"spambot"}, BotError, message)
+		}
+
 	}
 
 	return errors
@@ -235,6 +279,44 @@ func main() {
 		log.Fatalf("E-mail regex compilation failed for %s", EMAIL_REGEX)
 	}
 
+	//Robot detection field
+	botDetectionFieldLocationStr := GetenvWithDefault("BOTDETECT_FIELDLOCATION", "body")
+	botDetectionFieldName := GetenvWithDefault("BOTDETECT_FIELDNAME", "spambot")
+	botDetectionFieldValue := GetenvWithDefault("BOTDETECT_FIELDVALUE", "")
+	botDetectionMustMatchStr := GetenvWithDefault("BOTDETECT_MUSTMATCH", "true")
+	botDetectionPlayCoyStr := GetenvWithDefault("BOTDETECT_PLAYCOY", "true")
+
+	var botDetectionFieldLocation RequestLocation
+
+	switch botDetectionFieldLocationStr {
+	case "header":
+		botDetectionFieldLocation = Header
+		break
+	case "body":
+		botDetectionFieldLocation = Body
+		break
+	default:
+		botDetectionFieldLocation = Body
+		log.Printf("Error with int input for field %s with value %s.  Defaulting to Body.", "BOTDETECT_FIELDLOCATION", botDetectionFieldLocationStr)
+		break
+	}
+
+	botDetectionMustMatch, err := strconv.ParseBool(botDetectionMustMatchStr)
+	if nil != err {
+		botDetectionMustMatch = true
+		log.Printf("Error converting boolean input for field %s with value %s. Defaulting to true.", "BOTDETECT_MUSTMATCH", botDetectionMustMatchStr)
+	}
+
+	botDetectionPlayCoy, err := strconv.ParseBool(botDetectionPlayCoyStr)
+	if nil != err {
+		botDetectionPlayCoy = true
+		log.Printf("Error converting boolean input for field %s with value %s. Defaulting to true.", "BOTDETECT_PLAYCOY", botDetectionPlayCoyStr)
+	}
+
+	botDetection = BotDetection{botDetectionFieldLocation, botDetectionFieldName, botDetectionFieldValue, botDetectionMustMatch, botDetectionPlayCoy}
+
+	log.Printf("Creating robot detection with %#v", botDetection)
+
 	//HTTP handlers
 	log.Print("Preparing HTTP handlers")
 	createHandler, errorHandler, notFoundHandler := setupHttpHandlers(db)
@@ -319,6 +401,16 @@ func setupHttpHandlers(db *sql.DB) (CreateHandler, ErrorHandler, NotFoundHandler
 			} else if errors.Has(binding.TypeError) {
 				res.WriteHeader(http.StatusBadRequest)
 				response = Response{Code: http.StatusBadRequest, Message: errors[0].Error()}
+			} else if errors.Has(BotError) {
+				if botDetection.PlayCoy {
+					res.WriteHeader(http.StatusCreated)
+					response = Response{Code: http.StatusCreated, Message: "Successfully added prospect"}
+					log.Printf("Robot detected: %s. Playing coy.", errors[0].Error())
+				} else {
+					res.WriteHeader(http.StatusBadRequest)
+					response = Response{Code: http.StatusBadRequest, Message: errors[0].Error()}
+					log.Printf("Robot detected: %s. Rejecting message.", errors[0].Error())
+				}
 			} else {
 				res.WriteHeader(http.StatusBadRequest)
 				response = Response{Code: http.StatusBadRequest, Message: "Unknown error"}
