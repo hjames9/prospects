@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	QUERY             = "INSERT INTO prospects.leads(lead_id, app_name, email, used_pinterest, used_facebook, used_instagram, used_twitter, used_google, used_youtube, referrer, page_referrer, first_name, last_name, phone_number, age, gender, zip_code, language, user_agent, cookies, geolocation, ip_address, miscellaneous, created_at) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, POINT($21, $22), $23, $24, $25) RETURNING id;"
+	QUERY             = "INSERT INTO prospects.leads(lead_id, app_name, email, used_pinterest, used_facebook, used_instagram, used_twitter, used_google, used_youtube, referrer, page_referrer, first_name, last_name, phone_number, dob, gender, zip_code, language, user_agent, cookies, geolocation, ip_address, miscellaneous, created_at) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, POINT($21, $22), $23, $24, $25) RETURNING id;"
 	EMAIL_REGEX       = "^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$"
 	UUID_REGEX        = "^[a-z0-9]{8}-[a-z0-9]{4}-[1-5][a-z0-9]{3}-[a-z0-9]{4}-[a-z0-9]{12}$"
 	POST_URL          = "/prospects"
@@ -46,7 +46,7 @@ type ProspectForm struct {
 	Google        bool   `form:"google"`
 	Youtube       bool   `form:"youtube"`
 	PhoneNumber   string `form:"phonenumber"`
-	Age           int64  `form:"age"`
+	DateOfBirth   string `form:"dob"`
 	Gender        string `form:"gender"`
 	ZipCode       string `form:"zipcode"`
 	Language      string `form:"language"`
@@ -118,6 +118,7 @@ func (prospect ProspectForm) Validate(errors binding.Errors, req *http.Request) 
 	errors = validateSizeLimit(prospect.LastName, "lastname", STRING_SIZE_LIMIT, errors)
 	errors = validateSizeLimit(prospect.Email, "email", STRING_SIZE_LIMIT, errors)
 	errors = validateSizeLimit(prospect.PhoneNumber, "phonenumber", STRING_SIZE_LIMIT, errors)
+	errors = validateSizeLimit(prospect.DateOfBirth, "dob", STRING_SIZE_LIMIT, errors)
 	errors = validateSizeLimit(prospect.Gender, "gender", STRING_SIZE_LIMIT, errors)
 	errors = validateSizeLimit(prospect.ZipCode, "zipcode", STRING_SIZE_LIMIT, errors)
 	errors = validateSizeLimit(prospect.Language, "language", STRING_SIZE_LIMIT, errors)
@@ -152,9 +153,21 @@ func (prospect ProspectForm) Validate(errors binding.Errors, req *http.Request) 
 			errors = addError(errors, []string{"miscellaneous"}, binding.TypeError, message)
 		}
 
-		if prospect.Age < 0 || prospect.Age > 200 {
-			message := fmt.Sprintf("Invalid age \"%d\" specified", prospect.Age)
-			errors = addError(errors, []string{"age"}, binding.TypeError, message)
+		if len(prospect.DateOfBirth) > 0 {
+			dob, err := time.Parse(time.RFC3339, prospect.DateOfBirth)
+			var failed bool
+
+			if nil != err {
+				failed = true
+			} else {
+				age := getAge(dob)
+				failed = age < 0 || age > 200
+			}
+
+			if failed {
+				message := fmt.Sprintf("Invalid date of birth \"%s\" specified", prospect.DateOfBirth)
+				errors = addError(errors, []string{"dob"}, binding.TypeError, message)
+			}
 		}
 
 		if len(prospect.Gender) > 0 && (prospect.Gender != "male" && prospect.Gender != "female") {
@@ -226,6 +239,11 @@ func processIpAddress(remoteAddr string) string {
 func isJSON(str string) bool {
 	var js map[string]interface{}
 	return json.Unmarshal([]byte(str), &js) == nil
+}
+
+func getAge(dob time.Time) int64 {
+	age := time.Now().Sub(dob).Seconds() / 31536000
+	return int64(age)
 }
 
 func main() {
@@ -466,9 +484,9 @@ func addProspect(db *sql.DB, prospect ProspectForm) (int, error) {
 		pageReferrer = sql.NullString{prospect.PageReferrer, true}
 	}
 
-	var age sql.NullInt64
-	if prospect.Age != 0 {
-		age = sql.NullInt64{prospect.Age, true}
+	var dob sql.NullString
+	if len(prospect.DateOfBirth) != 0 {
+		dob = sql.NullString{prospect.DateOfBirth, true}
 	}
 
 	var gender sql.NullString
@@ -514,7 +532,7 @@ func addProspect(db *sql.DB, prospect ProspectForm) (int, error) {
 	}
 
 	var lastInsertId int
-	err := db.QueryRow(QUERY, prospect.LeadId, prospect.AppName, email, prospect.Pinterest, prospect.Facebook, prospect.Instagram, prospect.Twitter, prospect.Google, prospect.Youtube, referrer, pageReferrer, firstName, lastName, phoneNumber, age, gender, zipCode, language, userAgent, cookies, latitude, longitude, ipAddress, miscellaneous, time.Now()).Scan(&lastInsertId)
+	err := db.QueryRow(QUERY, prospect.LeadId, prospect.AppName, email, prospect.Pinterest, prospect.Facebook, prospect.Instagram, prospect.Twitter, prospect.Google, prospect.Youtube, referrer, pageReferrer, firstName, lastName, phoneNumber, dob, gender, zipCode, language, userAgent, cookies, latitude, longitude, ipAddress, miscellaneous, time.Now()).Scan(&lastInsertId)
 
 	if nil == err {
 		log.Printf("New prospect id = %d", lastInsertId)

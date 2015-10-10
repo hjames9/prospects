@@ -39,6 +39,14 @@
         <input type="checkbox" name="youtube" value="true"> Youtube
         <input type="hidden" name="appname" value="testapp"/>
         <br>
+        <input type="radio" name="gender" value="female">Female
+        <input type="radio" name="gender" value="male">Male
+        <br>
+        <input type="tel" name="phonenumber"> Phone Number
+        <br>
+        <input type="date" name="dob" min="1700-01-01" max="2016-01-01"> Date of Birth
+        <br>
+        <br>
         <input type="submit" value="Submit">
         <input type="button" value="Clear">
     </form>
@@ -106,6 +114,11 @@
         var googleBox = null;
         var youtubeBox = null;
 
+        var femaleRadio = null;
+        var maleRadio = null;
+
+        var dobDate = null;
+
         for(var iter = 0; iter < inputs.length; ++iter)
         {
             if(inputs[iter].name == "appname")
@@ -130,6 +143,12 @@
                 googleBox = inputs[iter];
             else if(inputs[iter].name == "youtube")
                 youtubeBox = inputs[iter];
+            else if(inputs[iter].name == "gender" && inputs[iter].value == "female")
+                femaleRadio = inputs[iter];
+            else if(inputs[iter].name == "gender" && inputs[iter].value == "male")
+                maleRadio = inputs[iter];
+            else if(inputs[iter].name == "dob")
+                dobDate = inputs[iter];
             else if(inputs[iter].value.toLowerCase() == "clear")
                 clearButton = inputs[iter];
         };
@@ -179,6 +198,16 @@
 
             if(youtubeBox.checked)
                 queryStr += "&" + youtubeBox.name + "=" + encodeURIComponent(youtubeBox.value);
+
+            if(femaleRadio.checked)
+                queryStr += "&" + femaleRadio.name + "=" + encodeURIComponent(femaleRadio.value);
+            else if(maleRadio.checked)
+                queryStr += "&" + maleRadio.name + "=" + encodeURIComponent(maleRadio.value);
+
+            if(dobDate.value) {
+                var dob = new Date(dobDate.value);
+                queryStr += "&" + dobDate.name + "=" + encodeURIComponent(dob.toISOString());
+            }
 
             if(document.referrer) {
                 console.log("Referrer: " + document.referrer);
