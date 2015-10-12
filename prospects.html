@@ -6,24 +6,21 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Prospect test page</title>
-    <style type="text/css">
-        #middlename {
-            display: none;
-        }
-    </style>
+    <link type="text/css" rel="stylesheet" href="prospects.css"/>
+    <script type="text/javascript" src="prospects.js"></script>
 </head>
 
 <body>
     <form id="mainForm" action="http://localhost:3000/prospects" method="POST">
-        <div id="firstName">
+        <div>
             <label>First name:</label><br>
             <input type="text" name="firstname"><br>
         </div>
-        <div id="middlename">
+        <div class="middlename">
             <label>Middle Name:</label><br>
             <input type="text" name="middlename"><br>
         </div>
-        <div id="lastname">
+        <div>
             <label>Last name:</label><br>
             <input type="text" name="lastname"><br>
         </div>
@@ -51,205 +48,23 @@
         <input type="button" value="Clear">
     </form>
 
-    <script type="text/javascript">
-        var UUID = (function() {
-            var self = {};
-            var lut = []; for (var i=0; i<256; i++) { lut[i] = (i<16?'0':'')+(i).toString(16); }
-            self.generate = function() {
-            var d0 = Math.random()*0xffffffff|0;
-            var d1 = Math.random()*0xffffffff|0;
-            var d2 = Math.random()*0xffffffff|0;
-            var d3 = Math.random()*0xffffffff|0;
-                return lut[d0&0xff]+lut[d0>>8&0xff]+lut[d0>>16&0xff]+lut[d0>>24&0xff]+'-'+
-                       lut[d1&0xff]+lut[d1>>8&0xff]+'-'+lut[d1>>16&0x0f|0x40]+lut[d1>>24&0xff]+'-'+
-                       lut[d2&0x3f|0x80]+lut[d2>>8&0xff]+'-'+lut[d2>>16&0xff]+lut[d2>>24&0xff]+
-                       lut[d3&0xff]+lut[d3>>8&0xff]+lut[d3>>16&0xff]+lut[d3>>24&0xff];
-            }
-            return self;
-        })();
+    <form id="feedbackForm" action="http://localhost:3000/prospects" method="POST">
+        <div id="feedback">
+            <label>Feedback</label>
+            <br>
+            <textarea name="feedback" cols="50" rows="8"></textarea>
+        </div>
+        <br>
+        <div class="middlename">
+            <label>Middle Name:</label><br>
+            <input type="text" name="middlename"><br>
+        </div>
+        <input type="hidden" name="appname" value="testapp"/>
+        <input type="submit" value="Submit">
+        <input type="button" value="Clear">
+    </form>
 
-        var storage = window.localStorage;
-        var uuid = storage.getItem('uuid');
-
-        if(null == uuid) {
-            uuid = UUID.generate();
-            storage.setItem('uuid', uuid);
-        }
-
-        console.log(uuid);
-
-        var crd = null;
-        if(navigator.geolocation) {
-            console.log("Geolocation: " + navigator.geolocation)
-
-            navigator.geolocation.getCurrentPosition(
-                function(pos) {
-                    crd = pos.coords;
-
-                    console.log('Latitude: ' + crd.latitude);
-                    console.log('Longitude: ' + crd.longitude);
-                    console.log('More or less ' + crd.accuracy + ' meters.');
-
-                },
-                function(err) {
-                    console.warn('ERROR(' + err.code + '): ' + err.message);
-                },
-                {enableHighAccuracy: true, timeout: 5000, maximumAge: 0}
-            );
-        }
-
-        mainForm = document.getElementById("mainForm");
-        var inputs = document.getElementsByTagName("input");
-        var appnameText = null;
-        var firstnameText = null;
-        var middlenameText = null;
-        var lastnameText = null;
-        var emailText = null;
-        var clearButton = null;
-
-        var pinterestBox = null;
-        var facebookBox = null;
-        var instagramBox = null;
-        var twitterBox = null;
-        var googleBox = null;
-        var youtubeBox = null;
-
-        var femaleRadio = null;
-        var maleRadio = null;
-
-        var dobDate = null;
-
-        for(var iter = 0; iter < inputs.length; ++iter)
-        {
-            if(inputs[iter].name == "appname")
-                appnameText = inputs[iter];
-            else if(inputs[iter].name == "firstname")
-                firstnameText = inputs[iter];
-            else if(inputs[iter].name == "middlename")
-                middlenameText = inputs[iter];
-            else if(inputs[iter].name == "lastname")
-                lastnameText = inputs[iter];
-            else if(inputs[iter].name == "email")
-                emailText = inputs[iter];
-            else if(inputs[iter].name == "pinterest")
-                pinterestBox = inputs[iter];
-            else if(inputs[iter].name == "facebook")
-                facebookBox = inputs[iter];
-            else if(inputs[iter].name == "instagram")
-                instagramBox = inputs[iter];
-            else if(inputs[iter].name == "twitter")
-                twitterBox = inputs[iter];
-            else if(inputs[iter].name == "google")
-                googleBox = inputs[iter];
-            else if(inputs[iter].name == "youtube")
-                youtubeBox = inputs[iter];
-            else if(inputs[iter].name == "gender" && inputs[iter].value == "female")
-                femaleRadio = inputs[iter];
-            else if(inputs[iter].name == "gender" && inputs[iter].value == "male")
-                maleRadio = inputs[iter];
-            else if(inputs[iter].name == "dob")
-                dobDate = inputs[iter];
-            else if(inputs[iter].value.toLowerCase() == "clear")
-                clearButton = inputs[iter];
-        };
-
-        mainForm.addEventListener("submit", function(e)
-        {
-            var xmlHttp = new XMLHttpRequest();
-
-            xmlHttp.onload = function(lev)
-            {
-                console.log(xmlHttp.responseText);
-                console.log(xmlHttp.status);
-                jsonResponse = JSON.parse(xmlHttp.responseText);
-                console.log(jsonResponse);
-                mainForm.reset();
-            };
-
-            xmlHttp.onerror = function(eev)
-            {
-                console.log(xmlHttp.responseText);
-                console.log(xmlHttp.status);
-                alert("Server error");
-            };
-
-            var appnameStr = appnameText.name + "=" + encodeURIComponent(appnameText.value);
-            var firstnameStr = firstnameText.name + "=" + encodeURIComponent(firstnameText.value);
-            var middlenameStr = middlenameText.name + "=" + encodeURIComponent(middlenameText.value);
-            var lastnameStr = lastnameText.name + "=" + encodeURIComponent(lastnameText.value);
-            var emailStr = emailText.name + "=" + encodeURIComponent(emailText.value);
-
-            var queryStr = appnameStr + "&" + firstnameStr + "&" + middlenameStr + "&" + lastnameStr + "&" + emailStr;
-
-            if(pinterestBox.checked)
-                queryStr += "&" + pinterestBox.name + "=" + encodeURIComponent(pinterestBox.value);
-
-            if(facebookBox.checked)
-                queryStr += "&" + facebookBox.name + "=" + encodeURIComponent(facebookBox.value);
-
-            if(instagramBox.checked)
-                queryStr += "&" + instagramBox.name + "=" + encodeURIComponent(instagramBox.value);
-
-            if(twitterBox.checked)
-                queryStr += "&" + twitterBox.name + "=" + encodeURIComponent(twitterBox.value);
-
-            if(googleBox.checked)
-                queryStr += "&" + googleBox.name + "=" + encodeURIComponent(googleBox.value);
-
-            if(youtubeBox.checked)
-                queryStr += "&" + youtubeBox.name + "=" + encodeURIComponent(youtubeBox.value);
-
-            if(femaleRadio.checked)
-                queryStr += "&" + femaleRadio.name + "=" + encodeURIComponent(femaleRadio.value);
-            else if(maleRadio.checked)
-                queryStr += "&" + maleRadio.name + "=" + encodeURIComponent(maleRadio.value);
-
-            if(dobDate.value) {
-                var dob = new Date(dobDate.value);
-                queryStr += "&" + dobDate.name + "=" + encodeURIComponent(dob.toISOString());
-            }
-
-            if(document.referrer) {
-                console.log("Referrer: " + document.referrer);
-                queryStr += "&pagereferrer=" + encodeURIComponent(document.referrer);
-            } else {
-                console.log("Page was not referred");
-            }
-
-            if(navigator.language) {
-                console.log("Language: " + navigator.language)
-                queryStr += "&language=" + encodeURIComponent(navigator.language);
-            }
-
-            if(navigator.geolocation) {
-                if(null != crd) {
-                    queryStr += "&latitude=" + encodeURIComponent(crd.latitude);
-                    queryStr += "&longitude=" + encodeURIComponent(crd.longitude);
-                }
-            }
-
-            if(navigator.platform) {
-                console.log("Platform: " + navigator.platform)
-                document.cookie="testing=Hayden James";
-            }
-
-            queryStr += "&leadid=" + encodeURIComponent(uuid);
-
-            xmlHttp.open(mainForm.method, mainForm.action, true);
-            xmlHttp.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-            xmlHttp.withCredentials = true;
-            xmlHttp.send(queryStr);
-
-            e.preventDefault();
-        });
-
-        clearButton.addEventListener("click", function(e)
-        {
-            mainForm.reset();
-        });
-
-    </script>
-
+    <script type="text/javascript">new Prospects();</script>
 </body>
 
 </html>

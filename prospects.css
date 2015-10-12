@@ -1,0 +1,11 @@
+.middlename {
+    display: none;
+}
+
+#mainForm {
+    float: left;
+}
+
+#feedbackForm {
+    float: right;
+}

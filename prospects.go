@@ -20,15 +20,16 @@ import (
 )
 
 const (
-	QUERY             = "INSERT INTO prospects.leads(lead_id, app_name, email, used_pinterest, used_facebook, used_instagram, used_twitter, used_google, used_youtube, referrer, page_referrer, first_name, last_name, phone_number, dob, gender, zip_code, language, user_agent, cookies, geolocation, ip_address, miscellaneous, created_at) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, POINT($21, $22), $23, $24, $25) RETURNING id;"
-	EMAIL_REGEX       = "^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$"
-	UUID_REGEX        = "^[a-z0-9]{8}-[a-z0-9]{4}-[1-5][a-z0-9]{3}-[a-z0-9]{4}-[a-z0-9]{12}$"
-	POST_URL          = "/prospects"
-	DB_DRIVER         = "postgres"
-	CONTENT_TYPE_NAME = "Content-Type"
-	JSON_CONTENT_TYPE = "application/json"
-	STRING_SIZE_LIMIT = 500
-	BotError          = "BotError"
+	QUERY               = "INSERT INTO prospects.leads(lead_id, app_name, email, used_pinterest, used_facebook, used_instagram, used_twitter, used_google, used_youtube, feedback, referrer, page_referrer, first_name, last_name, phone_number, dob, gender, zip_code, language, user_agent, cookies, geolocation, ip_address, miscellaneous, created_at) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, POINT($22, $23), $24, $25, $26) RETURNING id;"
+	EMAIL_REGEX         = "^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$"
+	UUID_REGEX          = "^[a-z0-9]{8}-[a-z0-9]{4}-[1-5][a-z0-9]{3}-[a-z0-9]{4}-[a-z0-9]{12}$"
+	POST_URL            = "/prospects"
+	DB_DRIVER           = "postgres"
+	CONTENT_TYPE_NAME   = "Content-Type"
+	JSON_CONTENT_TYPE   = "application/json"
+	STRING_SIZE_LIMIT   = 500
+	FEEDBACK_SIZE_LIMIT = 3000
+	BotError            = "BotError"
 )
 
 type ProspectForm struct {
@@ -45,6 +46,7 @@ type ProspectForm struct {
 	Twitter       bool   `form:"twitter"`
 	Google        bool   `form:"google"`
 	Youtube       bool   `form:"youtube"`
+	Feedback      string `form:"feedback"`
 	PhoneNumber   string `form:"phonenumber"`
 	DateOfBirth   string `form:"dob"`
 	Gender        string `form:"gender"`
@@ -117,6 +119,7 @@ func (prospect ProspectForm) Validate(errors binding.Errors, req *http.Request) 
 	errors = validateSizeLimit(prospect.FirstName, "firstname", STRING_SIZE_LIMIT, errors)
 	errors = validateSizeLimit(prospect.LastName, "lastname", STRING_SIZE_LIMIT, errors)
 	errors = validateSizeLimit(prospect.Email, "email", STRING_SIZE_LIMIT, errors)
+	errors = validateSizeLimit(prospect.Feedback, "feedback", FEEDBACK_SIZE_LIMIT, errors)
 	errors = validateSizeLimit(prospect.PhoneNumber, "phonenumber", STRING_SIZE_LIMIT, errors)
 	errors = validateSizeLimit(prospect.DateOfBirth, "dob", STRING_SIZE_LIMIT, errors)
 	errors = validateSizeLimit(prospect.Gender, "gender", STRING_SIZE_LIMIT, errors)
@@ -138,9 +141,9 @@ func (prospect ProspectForm) Validate(errors binding.Errors, req *http.Request) 
 			errors = addError(errors, []string{"leadid"}, binding.TypeError, message)
 		}
 
-		invalidId := len(prospect.Email) == 0 && !prospect.Pinterest && !prospect.Facebook && !prospect.Instagram && !prospect.Twitter && !prospect.Google && !prospect.Youtube
+		invalidId := len(prospect.Email) == 0 && !prospect.Pinterest && !prospect.Facebook && !prospect.Instagram && !prospect.Twitter && !prospect.Google && !prospect.Youtube && len(prospect.Feedback) == 0
 		if invalidId {
-			errors = addError(errors, []string{"email", "pinterest", "facebook", "instagram", "twitter", "google", "youtube"}, binding.RequiredError, "At least one of email, pinterest, facebook, instagram, twitter, google or youtube is required")
+			errors = addError(errors, []string{"email", "pinterest", "facebook", "instagram", "twitter", "google", "youtube", "feedback"}, binding.RequiredError, "At least one of email, pinterest, facebook, instagram, twitter, google, youtube or feedback is required")
 		}
 
 		if len(prospect.Email) > 0 && !emailRegex.MatchString(prospect.Email) {
@@ -459,6 +462,11 @@ func addProspect(db *sql.DB, prospect ProspectForm) (int, error) {
 		email = sql.NullString{prospect.Email, true}
 	}
 
+	var feedback sql.NullString
+	if len(prospect.Feedback) != 0 {
+		feedback = sql.NullString{prospect.Feedback, true}
+	}
+
 	var firstName sql.NullString
 	if len(prospect.FirstName) != 0 {
 		firstName = sql.NullString{prospect.FirstName, true}
@@ -532,7 +540,7 @@ func addProspect(db *sql.DB, prospect ProspectForm) (int, error) {
 	}
 
 	var lastInsertId int
-	err := db.QueryRow(QUERY, prospect.LeadId, prospect.AppName, email, prospect.Pinterest, prospect.Facebook, prospect.Instagram, prospect.Twitter, prospect.Google, prospect.Youtube, referrer, pageReferrer, firstName, lastName, phoneNumber, dob, gender, zipCode, language, userAgent, cookies, latitude, longitude, ipAddress, miscellaneous, time.Now()).Scan(&lastInsertId)
+	err := db.QueryRow(QUERY, prospect.LeadId, prospect.AppName, email, prospect.Pinterest, prospect.Facebook, prospect.Instagram, prospect.Twitter, prospect.Google, prospect.Youtube, feedback, referrer, pageReferrer, firstName, lastName, phoneNumber, dob, gender, zipCode, language, userAgent, cookies, latitude, longitude, ipAddress, miscellaneous, time.Now()).Scan(&lastInsertId)
 
 	if nil == err {
 		log.Printf("New prospect id = %d", lastInsertId)
