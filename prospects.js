@@ -155,22 +155,22 @@ Prospects.prototype.setupForm = function(formElement)
         
         queryStr += "leadid=" + encodeURIComponent(prospectsThis.getUUID()) + "&";
 
-        if(null != appnameText)
+        if(null != appnameText && appnameText.value.length > 0)
             queryStr += prospectsThis.getParameterFromInput(appnameText) + "&";
 
-        if(null != firstnameText)
+        if(null != firstnameText && firstnameText.value.length > 0)
             queryStr += prospectsThis.getParameterFromInput(firstnameText) + "&";
 
-        if(null != middlenameText)
+        if(null != middlenameText && middlenameText.value.length > 0)
             queryStr += prospectsThis.getParameterFromInput(middlenameText) + "&";
 
-        if(null != lastnameText)
+        if(null != lastnameText && lastnameText.value.length > 0)
             queryStr += prospectsThis.getParameterFromInput(lastnameText) + "&";
 
-        if(null != emailText)
+        if(null != emailText && emailText.value.length > 0)
             queryStr += prospectsThis.getParameterFromInput(emailText) + "&";
 
-        if(null != phonenumberText)
+        if(null != phonenumberText && phonenumberText.value.length > 0)
             queryStr += prospectsThis.getParameterFromInput(phonenumberText) + "&";
 
         if(null != pinterestBox && pinterestBox.checked)
@@ -196,7 +196,7 @@ Prospects.prototype.setupForm = function(formElement)
         else if(null != maleRadio && maleRadio.checked)
             queryStr += prospectsThis.getParameterFromInput(maleRadio) + "&";
 
-        if(null != feedbackBox)
+        if(null != feedbackBox && feedbackBox.value.length > 0)
             queryStr += prospectsThis.getParameterFromInput(feedbackBox) + "&";
 
         if(null != dobDate && dobDate.value) {
@@ -231,6 +231,7 @@ Prospects.prototype.setupForm = function(formElement)
         xmlHttp.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
         xmlHttp.withCredentials = true;
         xmlHttp.send(queryStr);
+        console.log(queryStr);
 
         e.preventDefault();
     });
