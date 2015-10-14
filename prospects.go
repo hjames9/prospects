@@ -260,8 +260,9 @@ func main() {
 	dbHost := GetenvWithDefault("DB_HOST", "localhost")
 	dbPort := GetenvWithDefault("DB_PORT", "5432")
 	dbMaxOpenConns := GetenvWithDefault("DB_MAX_OPEN_CONNS", "10")
+	dbMaxIdleConns := GetenvWithDefault("DB_MAX_IDLE_CONNS", "0")
 
-	dbCredentials := DatabaseCredentials{DB_DRIVER, dbUrl, dbUser, dbPassword, dbName, dbHost, dbPort, dbMaxOpenConns}
+	dbCredentials := DatabaseCredentials{DB_DRIVER, dbUrl, dbUser, dbPassword, dbName, dbHost, dbPort, dbMaxOpenConns, dbMaxIdleConns}
 	if !dbCredentials.IsValid() {
 		log.Fatalf("Database credentials NOT set correctly. %#v", dbCredentials)
 	}

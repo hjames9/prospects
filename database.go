@@ -16,6 +16,7 @@ type DatabaseCredentials struct {
 	Host         string
 	Port         string
 	MaxOpenConns string
+	MaxIdleConns string
 }
 
 func (dbCred DatabaseCredentials) IsValid() bool {
@@ -69,6 +70,18 @@ func (dbCred DatabaseCredentials) GetDatabase() *sql.DB {
 			log.Print(err)
 
 			db.SetMaxOpenConns(maxOpenConnsErr)
+		}
+
+		maxIdleConns, err := strconv.Atoi(dbCred.MaxIdleConns)
+
+		if nil == err {
+			db.SetMaxIdleConns(maxIdleConns)
+		} else {
+			const maxIdleConnsErr = 0
+			log.Printf("Error setting database maximum idle connections from value: %s. Default to %d", dbCred.MaxIdleConns, maxIdleConnsErr)
+			log.Print(err)
+
+			db.SetMaxIdleConns(maxIdleConnsErr)
 		}
 
 		err = db.Ping()
