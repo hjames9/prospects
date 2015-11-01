@@ -13,19 +13,19 @@
 <body>
     <form id="mainForm" action="http://localhost:3000/prospects" method="POST">
         <div>
-            <label>First name:</label><br>
+            <label for="firstname">First name:</label><br>
             <input type="text" name="firstname"><br>
         </div>
         <div class="middlename">
-            <label>Middle Name:</label><br>
+            <label for="middlename">Middle Name:</label><br>
             <input type="text" name="middlename"><br>
         </div>
         <div>
-            <label>Last name:</label><br>
+            <label for="lastname">Last name:</label><br>
             <input type="text" name="lastname"><br>
         </div>
         <div id="email">
-            <label>E-mail:</label><br>
+            <label for="email">E-mail:</label><br>
             <input type="email" name="email"><br>
         </div>
         <input type="checkbox" name="pinterest" value="true"> Pinterest
@@ -50,6 +50,12 @@
             <option value="fish">Fish</option>
         </select>
         <br>
+        <input type="button" value="Get location">
+        <label for="latitude">Latitude</label>
+        <input type="text" name="latitude" disabled>
+        <label for="longitude">Longitude</label>
+        <input type="text" name="longitude" disabled>
+        <br>
         <br>
         <input type="submit" value="Submit">
         <input type="button" value="Clear">
@@ -71,7 +77,7 @@
         <input type="button" value="Clear">
     </form>
 
-    <script type="text/javascript">new Prospects();</script>
+    <script type="text/javascript" src="main.js"></script>
 </body>
 
 </html>

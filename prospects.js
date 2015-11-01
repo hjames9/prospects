@@ -1,3 +1,20 @@
+/**
+ * var prospect = new Prospect();
+ *
+ * prospect.setUrl("https://host:port/Prospect");
+ * prospect.setAppname("bronxwood");
+ * prospect.setEmail("raul.ferris@gmail.com");
+ * prospect.setPhoneNumber("212-555-1212");
+ *
+ * prospect.ready(); //Returns if ready to save or not
+ * prospect.save(); //Synchronous.  Returns object with response data.
+ *
+ * prospect.save( //Asynchronous
+ *      function(response, status, pros) {}, //Success
+ *      function(response, status, pros) {}  //Error
+ * );
+ */
+
 var UUID = (function() {
     var self = {};
     var lut = []; for (var i=0; i<256; i++) { lut[i] = (i<16?'0':'')+(i).toString(16); }
@@ -14,38 +31,27 @@ var UUID = (function() {
     return self;
 })();
 
-function Prospects()
+function NotEmpty(value)
 {
-    this.setupGeolocation();
-    this.setupForm(document.getElementById("mainForm"));
-    this.setupForm(document.getElementById("feedbackForm"));
+    return typeof value === 'string' && value.length > 0;
 };
 
-Prospects.prototype.setupGeolocation = function()
+function IsBoolean(value)
 {
-    var prospectsThis = this;
-
-    if(navigator.geolocation) {
-        console.log("Geolocation: " + navigator.geolocation)
-
-        navigator.geolocation.getCurrentPosition(
-            function(pos) {
-                prospectsThis.crd = pos.coords;
-
-                console.log('Latitude: ' + prospectsThis.crd.latitude);
-                console.log('Longitude: ' + prospectsThis.crd.longitude);
-                console.log('More or less ' + prospectsThis.crd.accuracy + ' meters.');
-
-            },
-            function(err) {
-                console.warn('ERROR(' + err.code + '): ' + err.message);
-            },
-            {enableHighAccuracy: true, timeout: 5000, maximumAge: 0}
-        );
-    }
+    return typeof value === 'boolean';
 };
 
-Prospects.prototype.getUUID = function()
+function getParameterFromNvp(name, value)
+{
+    return name + "=" + encodeURIComponent(value) + "&";
+};
+
+function Prospect()
+{
+    this.uuid = this.getUUID();
+};
+
+Prospect.prototype.getUUID = function()
 {
     var storage = window.localStorage;
     var uuid = storage.getItem('uuid');
@@ -58,201 +64,332 @@ Prospects.prototype.getUUID = function()
     return uuid;
 };
 
-Prospects.prototype.getParameterFromInput = function(inputElement)
-{
-    return inputElement.name + "=" + encodeURIComponent(inputElement.value);
+Prospect.prototype.setUrl = function(url) {
+	this.url = url;
 };
 
-Prospects.prototype.setupForm = function(formElement)
+Prospect.prototype.getUrl = function() {
+	return this.url;
+}
+
+Prospect.prototype.setAppName = function(appName) {
+	this.appName = appName;
+};
+
+Prospect.prototype.getAppName = function() {
+	return this.appName;
+};
+
+Prospect.prototype.setEmail = function(email) {
+	this.email = email;
+};
+
+Prospect.prototype.getEmail = function() {
+	return this.email;
+};
+
+Prospect.prototype.setPinterest = function(pinterest) {
+	this.pinterest = pinterest;
+};
+
+Prospect.prototype.getPinterest = function() {
+	return this.pinterest;
+};
+
+Prospect.prototype.setFacebook = function(facebook) {
+	this.facebook = facebook;
+};
+
+Prospect.prototype.getFacebook = function() {
+	return this.facebook;
+};
+
+Prospect.prototype.setInstagram = function(instagram) {
+	this.instagram = instagram;
+};
+
+Prospect.prototype.getInstagram = function() {
+	return this.instagram;
+};
+
+Prospect.prototype.setTwitter = function(twitter) {
+	this.twitter = twitter;
+};
+
+Prospect.prototype.getTwitter = function() {
+	return this.twitter;
+};
+
+Prospect.prototype.setGoogle = function(google) {
+	this.google = google;
+};
+
+Prospect.prototype.getGoogle = function() {
+	return this.google;
+};
+
+Prospect.prototype.setYoutube = function(youtube) {
+	this.youtube = youtube;
+};
+
+Prospect.prototype.getYoutube = function() {
+	return this.youtube;
+};
+
+Prospect.prototype.setFeedback = function(feedback) {
+	this.feedback = feedback;
+};
+
+Prospect.prototype.getFeedback = function() {
+	return this.feedback;
+};
+
+Prospect.prototype.setPageReferrer = function(pageReferrer) {
+	this.pageReferrer = pageReferrer;
+};
+
+Prospect.prototype.getPageReferrer = function() {
+	return this.pageReferrer;
+};
+
+Prospect.prototype.setFirstName = function(firstName) {
+	this.firstName = firstName;
+};
+
+Prospect.prototype.getFirstName = function() {
+	return this.firstName;
+};
+
+Prospect.prototype.setMiddleName = function(middleName) {
+	this.middleName = middleName;
+};
+
+Prospect.prototype.getMiddleName = function() {
+	return this.middleName;
+};
+
+Prospect.prototype.setLastName = function(lastName) {
+	this.lastName = lastName;
+};
+
+Prospect.prototype.getLastName = function() {
+	return this.lastName;
+};
+
+Prospect.prototype.setPhoneNumber = function(phoneNumber) {
+	this.phoneNumber = phoneNumber;
+};
+
+Prospect.prototype.getPhoneNumber = function() {
+	return this.phoneNumber;
+};
+
+Prospect.prototype.setDateOfBirth = function(dateOfBirth) {
+	this.dateOfBirth = dateOfBirth;
+};
+
+Prospect.prototype.getDateOfBirth = function() {
+	return this.dateOfBirth;
+};
+
+Prospect.prototype.setGender = function(gender) {
+	this.gender = gender;
+};
+
+Prospect.prototype.getGender = function() {
+	return this.gender;
+};
+
+Prospect.prototype.setZipCode = function(zipCode) {
+	this.zipCode = zipCode;
+};
+
+Prospect.prototype.getZipCode = function() {
+	return this.zipCode;
+};
+
+Prospect.prototype.setLanguage = function(language) {
+	this.language = language;
+};
+
+Prospect.prototype.getLanguage = function() {
+	return this.language;
+};
+
+Prospect.prototype.setLatitude = function(latitude)
 {
-    var inputs = formElement.getElementsByTagName("input");
+	this.latitude = latitude;
+};
 
-    var appnameText = null;
-    var firstnameText = null;
-    var middlenameText = null;
-    var lastnameText = null;
-    var emailText = null;
-    var phonenumberText = null;
-    var clearButton = null;
+Prospect.prototype.getLatitude = function()
+{
+	return this.latitude;
+};
 
-    var pinterestBox = null;
-    var facebookBox = null;
-    var instagramBox = null;
-    var twitterBox = null;
-    var googleBox = null;
-    var youtubeBox = null;
-    var feedbackBox = null;
+Prospect.prototype.setLongitude = function(longitude)
+{
+	this.longitude = longitude;
+};
 
-    var femaleRadio = null;
-    var maleRadio = null;
+Prospect.prototype.getLongitude = function()
+{
+	return this.longitude;
+};
 
-    var dobDate = null;
+Prospect.prototype.setMiscellaneous = function(miscellaneous) {
+	this.miscellaneous = miscellaneous;
+};
 
-    for(var iter = 0; iter < inputs.length; ++iter)
+Prospect.prototype.getMiscellaneous = function() {
+	return this.miscellaneous;
+};
+
+Prospect.prototype.ready = function() {
+	return NotEmpty(this.url) && NotEmpty(this.uuid) && NotEmpty(this.appName)
+			&& (NotEmpty(this.email)
+			 || NotEmpty(this.phoneNumber)
+			 || IsBoolean(this.pinterest)
+			 || IsBoolean(this.facebook)
+			 || IsBoolean(this.twitter)
+			 || IsBoolean(this.instagram)
+			 || IsBoolean(this.google)
+			 || IsBoolean(this.youtube)
+             || NotEmpty(this.feedback));
+};
+
+Prospect.prototype.save = function(successFunc, errorFunc) {
+	if(!this.ready()) {
+		throw new Error("Prospect has missing required fields");
+	}
+
+	var xmlHttp = new XMLHttpRequest();
+	var async = (null != successFunc || null != errorFunc);
+	var that = this;
+
+    xmlHttp.onload = function(e)
     {
-        if(inputs[iter].name == "appname")
-            appnameText = inputs[iter];
-        else if(inputs[iter].name == "firstname")
-            firstnameText = inputs[iter];
-        else if(inputs[iter].name == "middlename")
-            middlenameText = inputs[iter];
-        else if(inputs[iter].name == "lastname")
-            lastnameText = inputs[iter];
-        else if(inputs[iter].name == "email")
-            emailText = inputs[iter];
-        else if(inputs[iter].name == "phonenumber")
-            phonenumberText = inputs[iter];
-        else if(inputs[iter].name == "pinterest")
-            pinterestBox = inputs[iter];
-        else if(inputs[iter].name == "facebook")
-            facebookBox = inputs[iter];
-        else if(inputs[iter].name == "instagram")
-            instagramBox = inputs[iter];
-        else if(inputs[iter].name == "twitter")
-            twitterBox = inputs[iter];
-        else if(inputs[iter].name == "google")
-            googleBox = inputs[iter];
-        else if(inputs[iter].name == "youtube")
-            youtubeBox = inputs[iter];
-        else if(inputs[iter].name == "gender" && inputs[iter].value == "female")
-            femaleRadio = inputs[iter];
-        else if(inputs[iter].name == "gender" && inputs[iter].value == "male")
-            maleRadio = inputs[iter];
-        else if(inputs[iter].name == "dob")
-            dobDate = inputs[iter];
-        else if(inputs[iter].value.toLowerCase() == "clear")
-            clearButton = inputs[iter];
+        if(null != successFunc) {
+            successFunc(JSON.parse(xmlHttp.responseText), xmlHttp.status, that);
+        }
     };
 
-    var feedbackTextArea = formElement.getElementsByTagName("textarea");
-    if(feedbackTextArea.length > 0) {
-        feedbackBox = feedbackTextArea[0];
-    }
-
-    var contestSelect = formElement.getElementsByTagName("select")[0];
-
-    var prospectsThis = this;
-
-    formElement.addEventListener("submit", function(e)
+    xmlHttp.onerror = function(e)
     {
-        var xmlHttp = new XMLHttpRequest();
+        if(null != errorFunc) {
+            if(0 != xmlHttp.status) {
+                errorFunc(JSON.parse(xmlHttp.responseText), xmlHttp.status, that);
+            } else {
+                //Titanium handles connection down errors here.  Browsers typically throw an exception on send
+                var error = { "code":503,
+                              "code_message":"Service unavailable",
+                              "message":e.error
+                            };
 
-        xmlHttp.onload = function(lev)
-        {
-            console.log(xmlHttp.responseText);
-            console.log(xmlHttp.status);
-            jsonResponse = JSON.parse(xmlHttp.responseText);
-            console.log(jsonResponse);
-            formElement.reset();
-        };
-
-        xmlHttp.onerror = function(eev)
-        {
-            console.log(xmlHttp.responseText);
-            console.log(xmlHttp.status);
-            alert("Server error");
-        };
-
-        var queryStr = "";
-        
-        queryStr += "leadid=" + encodeURIComponent(prospectsThis.getUUID()) + "&";
-
-        if(null != appnameText && appnameText.value.length > 0)
-            queryStr += prospectsThis.getParameterFromInput(appnameText) + "&";
-
-        if(null != firstnameText && firstnameText.value.length > 0)
-            queryStr += prospectsThis.getParameterFromInput(firstnameText) + "&";
-
-        if(null != middlenameText && middlenameText.value.length > 0)
-            queryStr += prospectsThis.getParameterFromInput(middlenameText) + "&";
-
-        if(null != lastnameText && lastnameText.value.length > 0)
-            queryStr += prospectsThis.getParameterFromInput(lastnameText) + "&";
-
-        if(null != emailText && emailText.value.length > 0)
-            queryStr += prospectsThis.getParameterFromInput(emailText) + "&";
-
-        if(null != phonenumberText && phonenumberText.value.length > 0)
-            queryStr += prospectsThis.getParameterFromInput(phonenumberText) + "&";
-
-        if(null != pinterestBox && pinterestBox.checked)
-            queryStr += prospectsThis.getParameterFromInput(pinterestBox) + "&";
-
-        if(null != facebookBox && facebookBox.checked)
-            queryStr += prospectsThis.getParameterFromInput(facebookBox) + "&";
-
-        if(null != instagramBox && instagramBox.checked)
-            queryStr += prospectsThis.getParameterFromInput(instagramBox) + "&";
-
-        if(null != twitterBox && twitterBox.checked)
-            queryStr += prospectsThis.getParameterFromInput(twitterBox) + "&";
-
-        if(null != googleBox && googleBox.checked)
-            queryStr += prospectsThis.getParameterFromInput(googleBox) + "&";
-
-        if(null != youtubeBox && youtubeBox.checked)
-            queryStr += prospectsThis.getParameterFromInput(youtubeBox) + "&";
-
-        if(null != femaleRadio && femaleRadio.checked)
-            queryStr += prospectsThis.getParameterFromInput(femaleRadio) + "&";
-        else if(null != maleRadio && maleRadio.checked)
-            queryStr += prospectsThis.getParameterFromInput(maleRadio) + "&";
-
-        if(null != feedbackBox && feedbackBox.value.length > 0)
-            queryStr += prospectsThis.getParameterFromInput(feedbackBox) + "&";
-
-        if(null != dobDate && dobDate.value) {
-            var dob = new Date(dobDate.value);
-            queryStr += dobDate.name + "=" + encodeURIComponent(dob.toISOString()) + "&";
-        }
-
-        if(null != contestSelect && contestSelect.value.length > 0) {
-            console.log(contestSelect.name);
-            console.log(contestSelect.value);
-            var contest = { "contest" : {"eligible" : true,
-                                         "item" : contestSelect.value
-                                        }
-                          };
-
-            console.log(contest);
-
-            queryStr += "miscellaneous=" + JSON.stringify(contest) + "&";
-        }
-
-        if(document.referrer) {
-            console.log("Referrer: " + document.referrer);
-            queryStr += "pagereferrer=" + encodeURIComponent(document.referrer) + "&";
-        } else {
-            console.log("Page was not referred");
-        }
-
-        if(navigator.language) {
-            console.log("Language: " + navigator.language)
-            queryStr += "language=" + encodeURIComponent(navigator.language) + "&";
-        }
-
-        if(navigator.geolocation) {
-            if(null != prospectsThis.crd) {
-                queryStr += "latitude=" + encodeURIComponent(prospectsThis.crd.latitude) + "&";
-                queryStr += "longitude=" + encodeURIComponent(prospectsThis.crd.longitude) + "&";
+                errorFunc(error, error.code, that);
             }
         }
+    };
 
-        if(navigator.platform) {
-            console.log("Platform: " + navigator.platform)
-        }
+    var queryStr = getParameterFromNvp("leadid", this.uuid);
+    queryStr += getParameterFromNvp("appname", this.appName);
 
-        xmlHttp.open(formElement.method, formElement.action, true);
-        xmlHttp.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-        xmlHttp.withCredentials = true;
-        xmlHttp.send(queryStr);
-        console.log(queryStr);
+    if(NotEmpty(this.email))
+        queryStr += getParameterFromNvp("email", this.email);
 
-        e.preventDefault();
-    });
+    if(IsBoolean(this.pinterest))
+        queryStr += getParameterFromNvp("pinterest", this.pinterest);
 
-    clearButton.addEventListener("click", function(e)
+    if(IsBoolean(this.facebook))
+        queryStr += getParameterFromNvp("facebook", this.facebook);
+
+    if(IsBoolean(this.instagram))
+        queryStr += getParameterFromNvp("instagram", this.instagram);
+
+    if(IsBoolean(this.twitter))
+        queryStr += getParameterFromNvp("twitter", this.twitter);
+
+    if(IsBoolean(this.google))
+        queryStr += getParameterFromNvp("google", this.google);
+
+    if(IsBoolean(this.youtube))
+        queryStr += getParameterFromNvp("youtube", this.youtube);
+
+    if(NotEmpty(this.firstName))
+        queryStr += getParameterFromNvp("firstname", this.firstName);
+
+    if(NotEmpty(this.lastName))
+        queryStr += getParameterFromNvp("lastname", this.lastName);
+
+    if(NotEmpty(this.feedback))
+        queryStr += getParameterFromNvp("feedback", this.feedback);
+
+    if(NotEmpty(this.phoneNumber))
+        queryStr += getParameterFromNvp("phonenumber", this.phoneNumber);
+
+    if(NotEmpty(this.dateOfBirth)) {
+        var dob = new Date(this.dateOfBirth).toISOString();
+        queryStr += getParameterFromNvp("dob", dob);
+    }
+
+    if(NotEmpty(this.gender))
+       queryStr += getParameterFromNvp("gender", this.gender);
+
+    if(NotEmpty(this.zipcode))
+       queryStr += getParameterFromNvp("zipcode", this.zipcode);
+
+    if(NotEmpty(this.language))
+       queryStr += getParameterFromNvp("language", this.language);
+    else if(navigator.language)
+       queryStr += getParameterFromNvp("language", navigator.language);
+
+    if(NotEmpty(this.pageReferrer))
+        queryStr += getParameterFromNvp("pagereferrer", this.pageReferrer);
+    else if(document.referrer)
+        queryStr += getParameterFromNvp("pagereferrer", document.referrer);
+
+    if(NotEmpty(this.latitude))
+        queryStr += getParameterFromNvp("latitude", this.latitude);
+
+    if(NotEmpty(this.longitude))
+        queryStr += getParameterFromNvp("longitude", this.longitude);
+
+    if(NotEmpty(this.miscellaneous))
+        queryStr += getParameterFromNvp("miscellaneous", this.miscellaneous);
+
+    try
     {
-        formElement.reset();
-    });
+	    xmlHttp.open("POST", this.url, async);
+	    xmlHttp.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+	    xmlHttp.withCredentials = true;
+	    xmlHttp.send(queryStr);
+
+	    if(!async) {
+	        if(0 != xmlHttp.status) {
+	            return JSON.parse(xmlHttp.responseText);
+	        } else {
+	            var error = { "code":503,
+	                          "code_message":"Service unavailable",
+	                          "message":exp.name
+	                        };
+
+	            return error;
+	        }
+	    }
+    }
+    catch(exp)
+    {
+        //Browsers typically handle connection refused errors by throwing an exception on send
+        var error = { "code":503,
+                      "code_message":"Service unavailable",
+                      "message":exp.name
+                    };
+
+        if(!async) {
+            return error;
+        } else {
+            if(null != errorFunc) {
+                errorFunc(error, error.code, that);
+            }
+        }
+    }
 };
