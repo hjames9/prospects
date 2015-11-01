@@ -38,7 +38,7 @@ CREATE TABLE leads
     created_at TIMESTAMP NOT NULL,
     CHECK(email ~* '^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$'),
     CHECK(geolocation[0] >= -90.0 AND geolocation[0] <= 90.0 AND geolocation[1] >= -180.0 AND geolocation[1] <= 180.0),
-    CHECK(email IS NOT NULL OR used_pinterest IS TRUE OR used_facebook IS TRUE OR used_instagram IS TRUE OR used_twitter IS TRUE OR used_google IS TRUE OR used_youtube IS TRUE OR feedback IS NOT NULL)
+    CHECK(email IS NOT NULL OR phone_number IS NOT NULL OR used_pinterest IS TRUE OR used_facebook IS TRUE OR used_instagram IS TRUE OR used_twitter IS TRUE OR used_google IS TRUE OR used_youtube IS TRUE OR feedback IS NOT NULL)
 );
 
 ALTER SEQUENCE leads_id_seq INCREMENT BY 7 START WITH 31337 RESTART WITH 31337;

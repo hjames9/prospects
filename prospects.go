@@ -141,9 +141,9 @@ func (prospect ProspectForm) Validate(errors binding.Errors, req *http.Request) 
 			errors = addError(errors, []string{"leadid"}, binding.TypeError, message)
 		}
 
-		invalidId := len(prospect.Email) == 0 && !prospect.Pinterest && !prospect.Facebook && !prospect.Instagram && !prospect.Twitter && !prospect.Google && !prospect.Youtube && len(prospect.Feedback) == 0
+		invalidId := len(prospect.Email) == 0 && len(prospect.PhoneNumber) == 0 && !prospect.Pinterest && !prospect.Facebook && !prospect.Instagram && !prospect.Twitter && !prospect.Google && !prospect.Youtube && len(prospect.Feedback) == 0
 		if invalidId {
-			errors = addError(errors, []string{"email", "pinterest", "facebook", "instagram", "twitter", "google", "youtube", "feedback"}, binding.RequiredError, "At least one of email, pinterest, facebook, instagram, twitter, google, youtube or feedback is required")
+			errors = addError(errors, []string{"email", "phonenumber", "pinterest", "facebook", "instagram", "twitter", "google", "youtube", "feedback"}, binding.RequiredError, "At least one of email, pinterest, facebook, instagram, twitter, google, youtube or feedback is required")
 		}
 
 		if len(prospect.Email) > 0 && !emailRegex.MatchString(prospect.Email) {

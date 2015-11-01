@@ -129,6 +129,8 @@ Prospects.prototype.setupForm = function(formElement)
         feedbackBox = feedbackTextArea[0];
     }
 
+    var contestSelect = formElement.getElementsByTagName("select")[0];
+
     var prospectsThis = this;
 
     formElement.addEventListener("submit", function(e)
@@ -202,6 +204,19 @@ Prospects.prototype.setupForm = function(formElement)
         if(null != dobDate && dobDate.value) {
             var dob = new Date(dobDate.value);
             queryStr += dobDate.name + "=" + encodeURIComponent(dob.toISOString()) + "&";
+        }
+
+        if(null != contestSelect && contestSelect.value.length > 0) {
+            console.log(contestSelect.name);
+            console.log(contestSelect.value);
+            var contest = { "contest" : {"eligible" : true,
+                                         "item" : contestSelect.value
+                                        }
+                          };
+
+            console.log(contest);
+
+            queryStr += "miscellaneous=" + JSON.stringify(contest) + "&";
         }
 
         if(document.referrer) {
