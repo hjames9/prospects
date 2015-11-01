@@ -1,7 +1,7 @@
 /**
  * var prospect = new Prospect();
  *
- * prospect.setUrl("https://host:port/Prospect");
+ * prospect.setUrl("https://host:port/prospects");
  * prospect.setAppname("bronxwood");
  * prospect.setEmail("raul.ferris@gmail.com");
  * prospect.setPhoneNumber("212-555-1212");
@@ -65,206 +65,206 @@ Prospect.prototype.getUUID = function()
 };
 
 Prospect.prototype.setUrl = function(url) {
-	this.url = url;
+    this.url = url;
 };
 
 Prospect.prototype.getUrl = function() {
-	return this.url;
+    return this.url;
 }
 
 Prospect.prototype.setAppName = function(appName) {
-	this.appName = appName;
+    this.appName = appName;
 };
 
 Prospect.prototype.getAppName = function() {
-	return this.appName;
+    return this.appName;
 };
 
 Prospect.prototype.setEmail = function(email) {
-	this.email = email;
+    this.email = email;
 };
 
 Prospect.prototype.getEmail = function() {
-	return this.email;
+    return this.email;
 };
 
 Prospect.prototype.setPinterest = function(pinterest) {
-	this.pinterest = pinterest;
+    this.pinterest = pinterest;
 };
 
 Prospect.prototype.getPinterest = function() {
-	return this.pinterest;
+    return this.pinterest;
 };
 
 Prospect.prototype.setFacebook = function(facebook) {
-	this.facebook = facebook;
+    this.facebook = facebook;
 };
 
 Prospect.prototype.getFacebook = function() {
-	return this.facebook;
+    return this.facebook;
 };
 
 Prospect.prototype.setInstagram = function(instagram) {
-	this.instagram = instagram;
+    this.instagram = instagram;
 };
 
 Prospect.prototype.getInstagram = function() {
-	return this.instagram;
+    return this.instagram;
 };
 
 Prospect.prototype.setTwitter = function(twitter) {
-	this.twitter = twitter;
+    this.twitter = twitter;
 };
 
 Prospect.prototype.getTwitter = function() {
-	return this.twitter;
+    return this.twitter;
 };
 
 Prospect.prototype.setGoogle = function(google) {
-	this.google = google;
+    this.google = google;
 };
 
 Prospect.prototype.getGoogle = function() {
-	return this.google;
+    return this.google;
 };
 
 Prospect.prototype.setYoutube = function(youtube) {
-	this.youtube = youtube;
+    this.youtube = youtube;
 };
 
 Prospect.prototype.getYoutube = function() {
-	return this.youtube;
+    return this.youtube;
 };
 
 Prospect.prototype.setFeedback = function(feedback) {
-	this.feedback = feedback;
+    this.feedback = feedback;
 };
 
 Prospect.prototype.getFeedback = function() {
-	return this.feedback;
+    return this.feedback;
 };
 
 Prospect.prototype.setPageReferrer = function(pageReferrer) {
-	this.pageReferrer = pageReferrer;
+    this.pageReferrer = pageReferrer;
 };
 
 Prospect.prototype.getPageReferrer = function() {
-	return this.pageReferrer;
+    return this.pageReferrer;
 };
 
 Prospect.prototype.setFirstName = function(firstName) {
-	this.firstName = firstName;
+    this.firstName = firstName;
 };
 
 Prospect.prototype.getFirstName = function() {
-	return this.firstName;
+    return this.firstName;
 };
 
 Prospect.prototype.setMiddleName = function(middleName) {
-	this.middleName = middleName;
+    this.middleName = middleName;
 };
 
 Prospect.prototype.getMiddleName = function() {
-	return this.middleName;
+    return this.middleName;
 };
 
 Prospect.prototype.setLastName = function(lastName) {
-	this.lastName = lastName;
+    this.lastName = lastName;
 };
 
 Prospect.prototype.getLastName = function() {
-	return this.lastName;
+    return this.lastName;
 };
 
 Prospect.prototype.setPhoneNumber = function(phoneNumber) {
-	this.phoneNumber = phoneNumber;
+    this.phoneNumber = phoneNumber;
 };
 
 Prospect.prototype.getPhoneNumber = function() {
-	return this.phoneNumber;
+    return this.phoneNumber;
 };
 
 Prospect.prototype.setDateOfBirth = function(dateOfBirth) {
-	this.dateOfBirth = dateOfBirth;
+    this.dateOfBirth = dateOfBirth;
 };
 
 Prospect.prototype.getDateOfBirth = function() {
-	return this.dateOfBirth;
+    return this.dateOfBirth;
 };
 
 Prospect.prototype.setGender = function(gender) {
-	this.gender = gender;
+    this.gender = gender;
 };
 
 Prospect.prototype.getGender = function() {
-	return this.gender;
+    return this.gender;
 };
 
 Prospect.prototype.setZipCode = function(zipCode) {
-	this.zipCode = zipCode;
+    this.zipCode = zipCode;
 };
 
 Prospect.prototype.getZipCode = function() {
-	return this.zipCode;
+    return this.zipCode;
 };
 
 Prospect.prototype.setLanguage = function(language) {
-	this.language = language;
+    this.language = language;
 };
 
 Prospect.prototype.getLanguage = function() {
-	return this.language;
+    return this.language;
 };
 
 Prospect.prototype.setLatitude = function(latitude)
 {
-	this.latitude = latitude;
+    this.latitude = latitude;
 };
 
 Prospect.prototype.getLatitude = function()
 {
-	return this.latitude;
+    return this.latitude;
 };
 
 Prospect.prototype.setLongitude = function(longitude)
 {
-	this.longitude = longitude;
+    this.longitude = longitude;
 };
 
 Prospect.prototype.getLongitude = function()
 {
-	return this.longitude;
+    return this.longitude;
 };
 
 Prospect.prototype.setMiscellaneous = function(miscellaneous) {
-	this.miscellaneous = miscellaneous;
+    this.miscellaneous = miscellaneous;
 };
 
 Prospect.prototype.getMiscellaneous = function() {
-	return this.miscellaneous;
+    return this.miscellaneous;
 };
 
 Prospect.prototype.ready = function() {
-	return NotEmpty(this.url) && NotEmpty(this.uuid) && NotEmpty(this.appName)
-			&& (NotEmpty(this.email)
-			 || NotEmpty(this.phoneNumber)
-			 || IsBoolean(this.pinterest)
-			 || IsBoolean(this.facebook)
-			 || IsBoolean(this.twitter)
-			 || IsBoolean(this.instagram)
-			 || IsBoolean(this.google)
-			 || IsBoolean(this.youtube)
+    return NotEmpty(this.url) && NotEmpty(this.uuid) && NotEmpty(this.appName)
+            && (NotEmpty(this.email)
+             || NotEmpty(this.phoneNumber)
+             || IsBoolean(this.pinterest)
+             || IsBoolean(this.facebook)
+             || IsBoolean(this.twitter)
+             || IsBoolean(this.instagram)
+             || IsBoolean(this.google)
+             || IsBoolean(this.youtube)
              || NotEmpty(this.feedback));
 };
 
 Prospect.prototype.save = function(successFunc, errorFunc) {
-	if(!this.ready()) {
-		throw new Error("Prospect has missing required fields");
-	}
+    if(!this.ready()) {
+        throw new Error("Prospect has missing required fields");
+    }
 
-	var xmlHttp = new XMLHttpRequest();
-	var async = (null != successFunc || null != errorFunc);
-	var that = this;
+    var xmlHttp = new XMLHttpRequest();
+    var async = (null != successFunc || null != errorFunc);
+    var that = this;
 
     xmlHttp.onload = function(e)
     {
@@ -358,23 +358,23 @@ Prospect.prototype.save = function(successFunc, errorFunc) {
 
     try
     {
-	    xmlHttp.open("POST", this.url, async);
-	    xmlHttp.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-	    xmlHttp.withCredentials = true;
-	    xmlHttp.send(queryStr);
+        xmlHttp.open("POST", this.url, async);
+        xmlHttp.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xmlHttp.withCredentials = true;
+        xmlHttp.send(queryStr);
 
-	    if(!async) {
-	        if(0 != xmlHttp.status) {
-	            return JSON.parse(xmlHttp.responseText);
-	        } else {
-	            var error = { "code":503,
-	                          "code_message":"Service unavailable",
-	                          "message":exp.name
-	                        };
+        if(!async) {
+            if(0 != xmlHttp.status) {
+                return JSON.parse(xmlHttp.responseText);
+            } else {
+                var error = { "code":503,
+                              "code_message":"Service unavailable",
+                              "message":exp.name
+                            };
 
-	            return error;
-	        }
-	    }
+                return error;
+            }
+        }
     }
     catch(exp)
     {
