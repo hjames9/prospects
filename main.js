@@ -92,7 +92,7 @@ function setupForm(formElement)
             prospect.setFirstName(firstnameText.value);
 
         if(null != middlenameText)
-            prospect.setMiddleName(middlenameText.value);
+            prospect.addAdhocField("middlename", middlenameText.value);
 
         if(null != lastnameText)
             prospect.setLastName(lastnameText.value);

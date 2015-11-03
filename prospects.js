@@ -49,6 +49,7 @@ function getParameterFromNvp(name, value)
 function Prospect()
 {
     this.uuid = this.getUUID();
+    this.adhocFields = {};
 };
 
 Prospect.prototype.getUUID = function()
@@ -160,14 +161,6 @@ Prospect.prototype.getFirstName = function() {
     return this.firstName;
 };
 
-Prospect.prototype.setMiddleName = function(middleName) {
-    this.middleName = middleName;
-};
-
-Prospect.prototype.getMiddleName = function() {
-    return this.middleName;
-};
-
 Prospect.prototype.setLastName = function(lastName) {
     this.lastName = lastName;
 };
@@ -242,6 +235,14 @@ Prospect.prototype.setMiscellaneous = function(miscellaneous) {
 
 Prospect.prototype.getMiscellaneous = function() {
     return this.miscellaneous;
+};
+
+Prospect.prototype.addAdhocField = function(name, value) {
+    this.adhocFields[name] = value;
+};
+
+Prospect.prototype.getAdhocFields = function() {
+    return this.adhocFields;
 };
 
 Prospect.prototype.ready = function() {
@@ -355,6 +356,12 @@ Prospect.prototype.save = function(successFunc, errorFunc) {
 
     if(NotEmpty(this.miscellaneous))
         queryStr += getParameterFromNvp("miscellaneous", this.miscellaneous);
+
+    for(var key in this.adhocFields) {
+        if(this.adhocFields.hasOwnProperty(key)) {
+            queryStr += getParameterFromNvp(key, this.adhocFields[key]);
+        }
+    }
 
     try
     {
