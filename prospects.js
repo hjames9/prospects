@@ -41,6 +41,11 @@ function IsBoolean(value)
     return typeof value === 'boolean';
 };
 
+function IsBooleanTrue(value)
+{
+    return IsBoolean(value) && value;
+};
+
 function getParameterFromNvp(name, value)
 {
     return name + "=" + encodeURIComponent(value) + "&";
@@ -135,6 +140,14 @@ Prospect.prototype.setYoutube = function(youtube) {
 
 Prospect.prototype.getYoutube = function() {
     return this.youtube;
+};
+
+Prospect.prototype.setExtended = function(extended) {
+    this.extended = extended;
+};
+
+Prospect.prototype.getExtended = function() {
+    return this.extended;
 };
 
 Prospect.prototype.setFeedback = function(feedback) {
@@ -249,12 +262,13 @@ Prospect.prototype.ready = function() {
     return NotEmpty(this.url) && NotEmpty(this.uuid) && NotEmpty(this.appName)
             && (NotEmpty(this.email)
              || NotEmpty(this.phoneNumber)
-             || IsBoolean(this.pinterest)
-             || IsBoolean(this.facebook)
-             || IsBoolean(this.twitter)
-             || IsBoolean(this.instagram)
-             || IsBoolean(this.google)
-             || IsBoolean(this.youtube)
+             || IsBooleanTrue(this.pinterest)
+             || IsBooleanTrue(this.facebook)
+             || IsBooleanTrue(this.twitter)
+             || IsBooleanTrue(this.instagram)
+             || IsBooleanTrue(this.google)
+             || IsBooleanTrue(this.youtube)
+             || IsBooleanTrue(this.extended)
              || NotEmpty(this.feedback));
 };
 
@@ -314,6 +328,9 @@ Prospect.prototype.save = function(successFunc, errorFunc) {
 
     if(IsBoolean(this.youtube))
         queryStr += getParameterFromNvp("youtube", this.youtube);
+
+    if(IsBoolean(this.extended))
+        queryStr += getParameterFromNvp("extended", this.extended);
 
     if(NotEmpty(this.firstName))
         queryStr += getParameterFromNvp("firstname", this.firstName);

@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	QUERY               = "INSERT INTO prospects.leads(lead_id, app_name, email, used_pinterest, used_facebook, used_instagram, used_twitter, used_google, used_youtube, feedback, referrer, page_referrer, first_name, last_name, phone_number, dob, gender, zip_code, language, user_agent, cookies, geolocation, ip_address, miscellaneous, created_at) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, POINT($22, $23), $24, $25, $26) RETURNING id;"
+	QUERY               = "INSERT INTO prospects.leads(lead_id, app_name, email, used_pinterest, used_facebook, used_instagram, used_twitter, used_google, used_youtube, extended, feedback, referrer, page_referrer, first_name, last_name, phone_number, dob, gender, zip_code, language, user_agent, cookies, geolocation, ip_address, miscellaneous, created_at) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, POINT($23, $24), $25, $26, $27) RETURNING id;"
 	ID_QUERY            = "SELECT last_value, increment_by FROM prospects.leads_id_seq"
 	EMAIL_REGEX         = "^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$"
 	UUID_REGEX          = "^[a-z0-9]{8}-[a-z0-9]{4}-[1-5][a-z0-9]{3}-[a-z0-9]{4}-[a-z0-9]{12}$"
@@ -48,6 +48,7 @@ type ProspectForm struct {
 	Twitter       bool   `form:"twitter"`
 	Google        bool   `form:"google"`
 	Youtube       bool   `form:"youtube"`
+	Extended      bool   `form:"extended"`
 	Feedback      string `form:"feedback"`
 	PhoneNumber   string `form:"phonenumber"`
 	DateOfBirth   string `form:"dob"`
@@ -143,9 +144,9 @@ func (prospect ProspectForm) Validate(errors binding.Errors, req *http.Request) 
 			errors = addError(errors, []string{"leadid"}, binding.TypeError, message)
 		}
 
-		invalidId := len(prospect.Email) == 0 && len(prospect.PhoneNumber) == 0 && !prospect.Pinterest && !prospect.Facebook && !prospect.Instagram && !prospect.Twitter && !prospect.Google && !prospect.Youtube && len(prospect.Feedback) == 0
+		invalidId := len(prospect.Email) == 0 && len(prospect.PhoneNumber) == 0 && !prospect.Pinterest && !prospect.Facebook && !prospect.Instagram && !prospect.Twitter && !prospect.Google && !prospect.Youtube && !prospect.Extended && len(prospect.Feedback) == 0
 		if invalidId {
-			errors = addError(errors, []string{"email", "phonenumber", "pinterest", "facebook", "instagram", "twitter", "google", "youtube", "feedback"}, binding.RequiredError, "At least one of email, pinterest, facebook, instagram, twitter, google, youtube or feedback is required")
+			errors = addError(errors, []string{"email", "phonenumber", "pinterest", "facebook", "instagram", "twitter", "google", "youtube", "extended", "feedback"}, binding.RequiredError, "At least one of email, pinterest, facebook, instagram, twitter, google, youtube, extended, or feedback is required")
 		}
 
 		if len(prospect.Email) > 0 && !emailRegex.MatchString(prospect.Email) {
@@ -564,7 +565,7 @@ func addProspect(db *sql.DB, prospect ProspectForm) (int64, error) {
 	}
 
 	var lastInsertId int64
-	err := db.QueryRow(QUERY, prospect.LeadId, prospect.AppName, email, prospect.Pinterest, prospect.Facebook, prospect.Instagram, prospect.Twitter, prospect.Google, prospect.Youtube, feedback, referrer, pageReferrer, firstName, lastName, phoneNumber, dob, gender, zipCode, language, userAgent, cookies, latitude, longitude, ipAddress, miscellaneous, time.Now()).Scan(&lastInsertId)
+	err := db.QueryRow(QUERY, prospect.LeadId, prospect.AppName, email, prospect.Pinterest, prospect.Facebook, prospect.Instagram, prospect.Twitter, prospect.Google, prospect.Youtube, prospect.Extended, feedback, referrer, pageReferrer, firstName, lastName, phoneNumber, dob, gender, zipCode, language, userAgent, cookies, latitude, longitude, ipAddress, miscellaneous, time.Now()).Scan(&lastInsertId)
 
 	if nil == err {
 		log.Printf("New prospect id = %d", lastInsertId)

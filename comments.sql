@@ -16,6 +16,7 @@ COMMENT ON COLUMN leads.used_instagram IS 'Whether lead came from instagram.';
 COMMENT ON COLUMN leads.used_twitter IS 'Whether lead came from twitter.';
 COMMENT ON COLUMN leads.used_google IS 'Whether lead came from google.';
 COMMENT ON COLUMN leads.used_youtube IS 'Whether lead came from youtube.';
+COMMENT ON COLUMN leads.extended IS 'Extended data provided by lead.';
 COMMENT ON COLUMN leads.feedback IS 'Feedback provided by lead.';
 COMMENT ON COLUMN leads.first_name IS 'First name of lead.';
 COMMENT ON COLUMN leads.last_name IS 'Last name of lead.';
@@ -56,6 +57,7 @@ COMMENT ON COLUMN sneezers.used_instagram IS 'Whether sneezer came from instagra
 COMMENT ON COLUMN sneezers.used_twitter IS 'Whether sneezer came from twitter';
 COMMENT ON COLUMN sneezers.used_google IS 'Whether sneezer came from google';
 COMMENT ON COLUMN sneezers.used_youtube IS 'Whether sneezer came from youtube';
+COMMENT ON COLUMN sneezers.extended IS 'Extended data provided by sneezer.';
 COMMENT ON COLUMN sneezers.feedback IS 'Feedback provided by sneezer';
 COMMENT ON COLUMN sneezers.first_name IS 'First name of sneezer';
 COMMENT ON COLUMN sneezers.last_name IS 'Last name of sneezer';
