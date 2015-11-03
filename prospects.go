@@ -10,6 +10,7 @@ import (
 	"github.com/martini-contrib/cors"
 	"github.com/martini-contrib/secure"
 	"log"
+	"math/rand"
 	"net"
 	"net/http"
 	"os"
@@ -21,6 +22,7 @@ import (
 
 const (
 	QUERY               = "INSERT INTO prospects.leads(lead_id, app_name, email, used_pinterest, used_facebook, used_instagram, used_twitter, used_google, used_youtube, feedback, referrer, page_referrer, first_name, last_name, phone_number, dob, gender, zip_code, language, user_agent, cookies, geolocation, ip_address, miscellaneous, created_at) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, POINT($22, $23), $24, $25, $26) RETURNING id;"
+	ID_QUERY            = "SELECT last_value, increment_by FROM prospects.leads_id_seq"
 	EMAIL_REGEX         = "^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$"
 	UUID_REGEX          = "^[a-z0-9]{8}-[a-z0-9]{4}-[1-5][a-z0-9]{3}-[a-z0-9]{4}-[a-z0-9]{12}$"
 	POST_URL            = "/prospects"
@@ -63,7 +65,7 @@ type ProspectForm struct {
 type Response struct {
 	Code    int
 	Message string
-	Id      int `json:",omitempty"`
+	Id      int64 `json:",omitempty"`
 }
 
 type RequestLocation int
@@ -249,7 +251,28 @@ func getAge(dob time.Time) int64 {
 	return int64(age)
 }
 
+var lastValue, incrementBy int64 = -1, -1
+func getNextId(db *sql.DB) int64 {
+	if(-1 == lastValue) {
+		err := db.QueryRow(ID_QUERY).Scan(&lastValue, &incrementBy)
+		if nil != err {
+			log.Print(err)
+		}
+	}
+
+	if(-1 != lastValue) {
+		lastValue += incrementBy
+		return lastValue
+	} else {
+		log.Print("Could not retrieve last sequence number from database.  Returning random value")
+		return 7 + rand.Int63n(int64(^uint64(0) >> 1) - 7)
+	}
+}
+
 func main() {
+	//Seed random number generator
+	rand.Seed(time.Now().UTC().UnixNano())
+
 	//Database connection
 	log.Print("Enabling database connectivity")
 
@@ -426,7 +449,7 @@ func setupHttpHandlers(db *sql.DB) (CreateHandler, ErrorHandler, NotFoundHandler
 			} else if errors.Has(BotError) {
 				if botDetection.PlayCoy {
 					res.WriteHeader(http.StatusCreated)
-					response = Response{Code: http.StatusCreated, Message: "Successfully added prospect"}
+					response = Response{Code: http.StatusCreated, Message: "Successfully added prospect", Id: getNextId(db)}
 					log.Printf("Robot detected: %s. Playing coy.", errors[0].Error())
 				} else {
 					res.WriteHeader(http.StatusBadRequest)
@@ -457,7 +480,7 @@ func setupHttpHandlers(db *sql.DB) (CreateHandler, ErrorHandler, NotFoundHandler
 	return createHandler, errorHandler, notFoundHandler
 }
 
-func addProspect(db *sql.DB, prospect ProspectForm) (int, error) {
+func addProspect(db *sql.DB, prospect ProspectForm) (int64, error) {
 	var email sql.NullString
 	if len(prospect.Email) != 0 {
 		email = sql.NullString{prospect.Email, true}
@@ -540,7 +563,7 @@ func addProspect(db *sql.DB, prospect ProspectForm) (int, error) {
 		cookies = sql.NullString{prospect.Cookies, true}
 	}
 
-	var lastInsertId int
+	var lastInsertId int64
 	err := db.QueryRow(QUERY, prospect.LeadId, prospect.AppName, email, prospect.Pinterest, prospect.Facebook, prospect.Instagram, prospect.Twitter, prospect.Google, prospect.Youtube, feedback, referrer, pageReferrer, firstName, lastName, phoneNumber, dob, gender, zipCode, language, userAgent, cookies, latitude, longitude, ipAddress, miscellaneous, time.Now()).Scan(&lastInsertId)
 
 	if nil == err {
