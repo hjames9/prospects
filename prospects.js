@@ -55,6 +55,7 @@ function Prospect()
 {
     this.uuid = this.getUUID();
     this.adhocFields = {};
+    this.adhocHeaders = {};
 };
 
 Prospect.prototype.getUUID = function()
@@ -258,6 +259,14 @@ Prospect.prototype.getAdhocFields = function() {
     return this.adhocFields;
 };
 
+Prospect.prototype.addAdhocHeader = function(name, value) {
+    this.adhocHeaders[name] = value;
+};
+
+Prospect.prototype.getAdhocHeaders = function() {
+    return this.adhocHeaders;
+};
+
 Prospect.prototype.ready = function() {
     return NotEmpty(this.url) && NotEmpty(this.uuid) && NotEmpty(this.appName)
             && (NotEmpty(this.email)
@@ -384,6 +393,13 @@ Prospect.prototype.save = function(successFunc, errorFunc) {
     {
         xmlHttp.open("POST", this.url, async);
         xmlHttp.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+
+        for(var key in this.adhocHeaders) {
+            if(this.adhocHeaders.hasOwnProperty(key)) {
+                xmlHttp.setRequestHeader(key, this.adhocHeaders[key]);
+            }
+        }
+
         xmlHttp.withCredentials = true;
         xmlHttp.send(queryStr);
 

@@ -253,20 +253,21 @@ func getAge(dob time.Time) int64 {
 }
 
 var lastValue, incrementBy int64 = -1, -1
+
 func getNextId(db *sql.DB) int64 {
-	if(-1 == lastValue) {
+	if -1 == lastValue {
 		err := db.QueryRow(ID_QUERY).Scan(&lastValue, &incrementBy)
 		if nil != err {
 			log.Print(err)
 		}
 	}
 
-	if(-1 != lastValue) {
+	if -1 != lastValue {
 		lastValue += incrementBy
 		return lastValue
 	} else {
 		log.Print("Could not retrieve last sequence number from database.  Returning random value")
-		return 7 + rand.Int63n(int64(^uint64(0) >> 1) - 7)
+		return 7 + rand.Int63n(int64(^uint64(0)>>1)-7)
 	}
 }
 
@@ -577,12 +578,17 @@ func addProspect(db *sql.DB, prospect ProspectForm) (int64, error) {
 func runHttpServer(createHandler CreateHandler, errorHandler ErrorHandler, notFoundHandler NotFoundHandler) {
 	martini_ := martini.Classic()
 
-	allowCORSHandler := cors.Allow(&cors.Options{
+	allowHeaders := []string{"Origin"}
+	if botDetection.FieldLocation == Header {
+		allowHeaders = append(allowHeaders, botDetection.FieldName)
+	}
+
+	martini_.Use(cors.Allow(&cors.Options{
 		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"POST"},
-		AllowHeaders:     []string{"Origin"},
+		AllowHeaders:     allowHeaders,
 		AllowCredentials: true,
-	})
+	}))
 
 	sslRedirect, err := strconv.ParseBool(GetenvWithDefault("SSL_REDIRECT", "false"))
 	if nil != err {
@@ -593,7 +599,7 @@ func runHttpServer(createHandler CreateHandler, errorHandler ErrorHandler, notFo
 		SSLRedirect: sslRedirect,
 	}))
 
-	martini_.Post(POST_URL, allowCORSHandler, binding.Form(ProspectForm{}), errorHandler, createHandler)
+	martini_.Post(POST_URL, binding.Form(ProspectForm{}), errorHandler, createHandler)
 	martini_.NotFound(notFoundHandler)
 	martini_.Run()
 }
