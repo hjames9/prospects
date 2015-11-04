@@ -273,6 +273,7 @@ func getNextId(db *sql.DB) int64 {
 
 func main() {
 	//Seed random number generator
+	log.Print("Seeding random number generator")
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	//Database connection
@@ -583,6 +584,17 @@ func runHttpServer(createHandler CreateHandler, errorHandler ErrorHandler, notFo
 		allowHeaders = append(allowHeaders, botDetection.FieldName)
 	}
 
+	//Allowable header names
+	headerNamesStr := os.Getenv("ALLOW_HEADERS")
+	if len(headerNamesStr) > 0 {
+		headerNamesArr := strings.Split(headerNamesStr, ",")
+		for _, headerName := range headerNamesArr {
+			allowHeaders = append(allowHeaders, headerName)
+		}
+	}
+
+	log.Printf("Allowable header names: %s", allowHeaders)
+
 	martini_.Use(cors.Allow(&cors.Options{
 		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"POST"},
@@ -594,6 +606,7 @@ func runHttpServer(createHandler CreateHandler, errorHandler ErrorHandler, notFo
 	if nil != err {
 		sslRedirect = false
 	}
+	log.Printf("Setting SSL redirect to %t", sslRedirect)
 
 	martini_.Use(secure.Secure(secure.Options{
 		SSLRedirect: sslRedirect,

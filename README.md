@@ -16,6 +16,7 @@ A Go-based http server to collect potential prospects and persist them to a Post
     PORT=8080 (default is 3000)
     MARTINI_ENV=production (default is development)
     APPLICATION_NAMES=tremont,laconia,paulding (default is empty for all allowable application names)
+    ALLOW_HEADERS=X-Requested-With,X-Forwarded-For (default is empty for only default headers)
     BOTDETECT_FIELDLOCATION=body (default is body, can be body or header)
     BOTDETECT_FIELDNAME=middlename (default is spambot)
     BOTDETECT_FIELDVALUE=iamhuman (default is blank)
