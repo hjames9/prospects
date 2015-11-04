@@ -84,6 +84,7 @@ function setupForm(formElement)
         var prospect = new Prospect();
 
         prospect.setUrl(formElement.action);
+        prospect.setExtended(true);
 
         if(null != appnameText)
             prospect.setAppName(appnameText.value);
