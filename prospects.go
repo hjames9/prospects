@@ -14,6 +14,9 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"sync"
 	"regexp"
 	"strconv"
 	"strings"
@@ -271,6 +274,84 @@ func getNextId(db *sql.DB) int64 {
 	}
 }
 
+var asyncRequest bool
+var prospects chan ProspectForm
+var running bool
+var waitGroup sync.WaitGroup
+
+func batchAddProspect(db *sql.DB, asyncProcessInterval time.Duration) {
+	log.Print("Started batch writing thread")
+
+	defer waitGroup.Done()
+
+	for running {
+		time.Sleep(asyncProcessInterval * time.Second)
+
+		var elements []ProspectForm
+		processing := true
+		for processing {
+			select {
+			case prospect, ok := <- prospects:
+				if ok {
+					elements = append(elements, prospect)
+					break
+				} else {
+					log.Print("Select channel closed")
+					processing = false
+					running = false
+					break
+				}
+			default:
+				processing = false
+				break
+			}
+		}
+
+		if len(elements) <= 0 {
+			continue
+		}
+
+		log.Printf("Starting batch processing of %d prospects", len(elements))
+
+		transaction, err := db.Begin()
+		if nil != err {
+			log.Print("Error creating transaction")
+			log.Print(err)
+			continue;
+		}
+
+		defer transaction.Rollback()
+		statement, err := transaction.Prepare(QUERY)
+		if nil != err {
+			log.Print("Error preparing SQL statement")
+			log.Print(err)
+			continue;
+		}
+
+		defer statement.Close()
+
+		counter := 0
+		for _, prospect := range elements {
+			_, err = addProspect(db, prospect, statement)
+			if nil != err {
+				log.Printf("Error processing prospect %#v", prospect)
+				log.Print(err)
+				continue
+			}
+
+			counter++
+		}
+
+		err = transaction.Commit()
+		if nil != err {
+			log.Print("Error committing transaction")
+			log.Print(err)
+		} else {
+			log.Printf("Processed %d prospects", counter)
+		}
+	}
+}
+
 func main() {
 	//Seed random number generator
 	log.Print("Seeding random number generator")
@@ -365,6 +446,49 @@ func main() {
 
 	log.Printf("Creating robot detection with %#v", botDetection)
 
+	//Asynchronous database writes
+	asyncRequest, err = strconv.ParseBool(GetenvWithDefault("ASYNC_REQUEST", "false"))
+	if(nil != err) {
+		asyncRequest = false;
+		running = false;
+		log.Printf("Error converting input for field ASYNC_REQUEST. Defaulting to false.")
+	}
+
+	asyncRequestSizeStr := GetenvWithDefault("ASYNC_REQUEST_SIZE", "100000")
+	asyncRequestSize, err := strconv.Atoi(asyncRequestSizeStr)
+	if nil != err {
+		asyncRequestSize = 100000
+		log.Printf("Error converting input for field ASYNC_REQUEST_SIZE. Defaulting to 100000.")
+	}
+
+	asyncProcessIntervalStr := GetenvWithDefault("ASYNC_PROCESS_INTERVAL", "5")
+	asyncProcessInterval, err := strconv.Atoi(asyncProcessIntervalStr)
+	if nil != err {
+		asyncProcessInterval = 5
+		log.Printf("Error converting input for field ASYNC_PROCESS_INTERVAL. Defaulting to 5.")
+	}
+
+	if(asyncRequest) {
+		waitGroup.Add(1)
+		running = true
+		prospects = make(chan ProspectForm, asyncRequestSize)
+		go batchAddProspect(db, time.Duration(asyncProcessInterval))
+		log.Printf("Asynchronous requests enabled. Request queue size set to %d", asyncRequestSize)
+		log.Printf("Asynchronous process interval is %d seconds", asyncProcessInterval)
+	}
+
+	//Signal handler
+	signals := make(chan os.Signal)
+	signal.Notify(signals, os.Interrupt)
+	signal.Notify(signals, syscall.SIGTERM)
+	go func() {
+		<- signals
+		log.Print("Shutting down...")
+		running = false
+		waitGroup.Wait()
+		os.Exit(0)
+	}()
+
 	//HTTP handlers
 	log.Print("Preparing HTTP handlers")
 	createHandler, errorHandler, notFoundHandler := setupHttpHandlers(db)
@@ -400,17 +524,28 @@ func setupHttpHandlers(db *sql.DB) (CreateHandler, ErrorHandler, NotFoundHandler
 		res.Header().Set(CONTENT_TYPE_NAME, JSON_CONTENT_TYPE)
 		var response Response
 
-		id, err := addProspect(db, prospect)
-		if nil != err {
-			responseStr := fmt.Sprintf("Could not add prospect due to server error: e-mail %s", prospect.Email)
-			response = Response{Code: http.StatusInternalServerError, Message: responseStr}
-			log.Print(responseStr)
-			log.Print(err)
-			log.Printf("%d database connections opened", db.Stats().OpenConnections)
-		} else {
+		if(asyncRequest && running) {
+			prospects <- prospect
 			responseStr := "Successfully added prospect"
-			response = Response{Code: http.StatusCreated, Message: responseStr, Id: id}
+			response = Response{Code: http.StatusAccepted, Message: responseStr}
 			log.Print(responseStr)
+		} else if(asyncRequest && !running) {
+			responseStr := "Could not add prospect due to server maintenance"
+			response = Response{Code: http.StatusServiceUnavailable, Message: responseStr}
+			log.Print(responseStr)
+		} else {
+			id, err := addProspect(db, prospect, nil)
+			if nil != err {
+				responseStr := "Could not add prospect due to server error"
+				response = Response{Code: http.StatusInternalServerError, Message: responseStr}
+				log.Print(responseStr)
+				log.Print(err)
+				log.Printf("%d database connections opened", db.Stats().OpenConnections)
+			} else {
+				responseStr := "Successfully added prospect"
+				response = Response{Code: http.StatusCreated, Message: responseStr, Id: id}
+				log.Print(responseStr)
+			}
 		}
 
 		jsonStr, _ := json.Marshal(response)
@@ -483,7 +618,7 @@ func setupHttpHandlers(db *sql.DB) (CreateHandler, ErrorHandler, NotFoundHandler
 	return createHandler, errorHandler, notFoundHandler
 }
 
-func addProspect(db *sql.DB, prospect ProspectForm) (int64, error) {
+func addProspect(db *sql.DB, prospect ProspectForm, statement* sql.Stmt) (int64, error) {
 	var email sql.NullString
 	if len(prospect.Email) != 0 {
 		email = sql.NullString{prospect.Email, true}
@@ -567,10 +702,15 @@ func addProspect(db *sql.DB, prospect ProspectForm) (int64, error) {
 	}
 
 	var lastInsertId int64
-	err := db.QueryRow(QUERY, prospect.LeadId, prospect.AppName, email, prospect.Pinterest, prospect.Facebook, prospect.Instagram, prospect.Twitter, prospect.Google, prospect.Youtube, prospect.Extended, feedback, referrer, pageReferrer, firstName, lastName, phoneNumber, dob, gender, zipCode, language, userAgent, cookies, latitude, longitude, ipAddress, miscellaneous, time.Now()).Scan(&lastInsertId)
+	var err error
+	if nil == statement {
+		err = db.QueryRow(QUERY, prospect.LeadId, prospect.AppName, email, prospect.Pinterest, prospect.Facebook, prospect.Instagram, prospect.Twitter, prospect.Google, prospect.Youtube, prospect.Extended, feedback, referrer, pageReferrer, firstName, lastName, phoneNumber, dob, gender, zipCode, language, userAgent, cookies, latitude, longitude, ipAddress, miscellaneous, time.Now()).Scan(&lastInsertId)
 
-	if nil == err {
-		log.Printf("New prospect id = %d", lastInsertId)
+		if nil == err {
+			log.Printf("New prospect id = %d", lastInsertId)
+		}
+	} else {
+		_, err = statement.Exec(prospect.LeadId, prospect.AppName, email, prospect.Pinterest, prospect.Facebook, prospect.Instagram, prospect.Twitter, prospect.Google, prospect.Youtube, prospect.Extended, feedback, referrer, pageReferrer, firstName, lastName, phoneNumber, dob, gender, zipCode, language, userAgent, cookies, latitude, longitude, ipAddress, miscellaneous, time.Now())
 	}
 
 	return lastInsertId, err

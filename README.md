@@ -22,3 +22,6 @@ A Go-based http server to collect potential prospects and persist them to a Post
     BOTDETECT_FIELDVALUE=iamhuman (default is blank)
     BOTDETECT_MUSTMATCH=true (default is true)
     BOTDETECT_PLAYCOY=true (default is true)
+    ASYNC_REQUEST=true (default is false)
+    ASYNC_REQUEST_SIZE=100000 (default is 100000)
+    ASYNC_PROCESS_INTERVAL=10 (default is 5 seconds)
