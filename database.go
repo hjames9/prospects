@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"strconv"
 )
 
 type DatabaseCredentials struct {
@@ -15,8 +14,8 @@ type DatabaseCredentials struct {
 	Name         string
 	Host         string
 	Port         string
-	MaxOpenConns string
-	MaxIdleConns string
+	MaxOpenConns int
+	MaxIdleConns int
 }
 
 func (dbCred DatabaseCredentials) IsValid() bool {
@@ -60,29 +59,8 @@ func (dbCred DatabaseCredentials) GetDatabase() *sql.DB {
 	if nil != err {
 		log.Printf("Error opening configured database: %s", dbCred.GetString())
 	} else {
-		maxOpenConns, err := strconv.Atoi(dbCred.MaxOpenConns)
-
-		if nil == err {
-			db.SetMaxOpenConns(maxOpenConns)
-		} else {
-			const maxOpenConnsErr = 10
-			log.Printf("Error setting database maximum open connections from value: %s. Default to %d", dbCred.MaxOpenConns, maxOpenConnsErr)
-			log.Print(err)
-
-			db.SetMaxOpenConns(maxOpenConnsErr)
-		}
-
-		maxIdleConns, err := strconv.Atoi(dbCred.MaxIdleConns)
-
-		if nil == err {
-			db.SetMaxIdleConns(maxIdleConns)
-		} else {
-			const maxIdleConnsErr = 0
-			log.Printf("Error setting database maximum idle connections from value: %s. Default to %d", dbCred.MaxIdleConns, maxIdleConnsErr)
-			log.Print(err)
-
-			db.SetMaxIdleConns(maxIdleConnsErr)
-		}
+		db.SetMaxOpenConns(dbCred.MaxOpenConns)
+		db.SetMaxIdleConns(dbCred.MaxIdleConns)
 
 		err = db.Ping()
 		if nil != err {

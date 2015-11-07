@@ -10,6 +10,7 @@ import (
 	"github.com/martini-contrib/cors"
 	"github.com/martini-contrib/secure"
 	"log"
+	"math"
 	"math/rand"
 	"net"
 	"net/http"
@@ -279,7 +280,48 @@ var prospects chan ProspectForm
 var running bool
 var waitGroup sync.WaitGroup
 
-func batchAddProspect(db *sql.DB, asyncProcessInterval time.Duration) {
+func processProspect(db *sql.DB, prospectBatch []ProspectForm) {
+	log.Printf("Starting batch processing of %d prospects", len(prospectBatch))
+
+	defer waitGroup.Done()
+
+	transaction, err := db.Begin()
+	if nil != err {
+		log.Print("Error creating transaction")
+		log.Print(err)
+	}
+
+	defer transaction.Rollback()
+	statement, err := transaction.Prepare(QUERY)
+	if nil != err {
+		log.Print("Error preparing SQL statement")
+		log.Print(err)
+	}
+
+	defer statement.Close()
+
+	counter := 0
+	for _, prospect := range prospectBatch {
+		_, err = addProspect(db, prospect, statement)
+		if nil != err {
+			log.Printf("Error processing prospect %#v", prospect)
+			log.Print(err)
+			continue
+		}
+
+		counter++
+	}
+
+	err = transaction.Commit()
+	if nil != err {
+		log.Print("Error committing transaction")
+		log.Print(err)
+	} else {
+		log.Printf("Processed %d prospects", counter)
+	}
+}
+
+func batchAddProspect(db *sql.DB, asyncProcessInterval time.Duration, dbMaxOpenConns int) {
 	log.Print("Started batch writing thread")
 
 	defer waitGroup.Done()
@@ -311,43 +353,32 @@ func batchAddProspect(db *sql.DB, asyncProcessInterval time.Duration) {
 			continue
 		}
 
-		log.Printf("Starting batch processing of %d prospects", len(elements))
+		log.Printf("Retrieved %d prospects.  Processing with %d connections", len(elements), dbMaxOpenConns)
 
-		transaction, err := db.Begin()
-		if nil != err {
-			log.Print("Error creating transaction")
-			log.Print(err)
-			continue;
-		}
+		sliceSize := int(math.Floor(float64(len(elements) / dbMaxOpenConns)))
+		remainder := len(elements) % dbMaxOpenConns
+		start := 0
+		end := 0
 
-		defer transaction.Rollback()
-		statement, err := transaction.Prepare(QUERY)
-		if nil != err {
-			log.Print("Error preparing SQL statement")
-			log.Print(err)
-			continue;
-		}
-
-		defer statement.Close()
-
-		counter := 0
-		for _, prospect := range elements {
-			_, err = addProspect(db, prospect, statement)
-			if nil != err {
-				log.Printf("Error processing prospect %#v", prospect)
-				log.Print(err)
-				continue
+		for iter := 0; iter < dbMaxOpenConns; iter++ {
+			var leftover int
+			if remainder > 0 {
+				leftover = 1
+				remainder--
+			} else {
+				leftover = 0
 			}
 
-			counter++
-		}
+			end += sliceSize + leftover
 
-		err = transaction.Commit()
-		if nil != err {
-			log.Print("Error committing transaction")
-			log.Print(err)
-		} else {
-			log.Printf("Processed %d prospects", counter)
+			if start == end {
+				break
+			}
+
+			waitGroup.Add(1)
+			go processProspect(db, elements[start:end])
+
+			start = end
 		}
 	}
 }
@@ -366,8 +397,24 @@ func main() {
 	dbName := os.Getenv("DB_NAME")
 	dbHost := GetenvWithDefault("DB_HOST", "localhost")
 	dbPort := GetenvWithDefault("DB_PORT", "5432")
-	dbMaxOpenConns := GetenvWithDefault("DB_MAX_OPEN_CONNS", "10")
-	dbMaxIdleConns := GetenvWithDefault("DB_MAX_IDLE_CONNS", "0")
+	dbMaxOpenConnsStr := GetenvWithDefault("DB_MAX_OPEN_CONNS", "10")
+	dbMaxIdleConnsStr := GetenvWithDefault("DB_MAX_IDLE_CONNS", "0")
+
+	var err error
+
+	dbMaxOpenConns, err := strconv.Atoi(dbMaxOpenConnsStr)
+	if nil != err {
+		dbMaxOpenConns = 10
+		log.Printf("Error setting database maximum open connections from value: %s. Default to %d", dbMaxOpenConnsStr, dbMaxOpenConns)
+		log.Print(err)
+	}
+
+	dbMaxIdleConns, err := strconv.Atoi(dbMaxIdleConnsStr)
+	if nil != err {
+		dbMaxIdleConns = 0
+		log.Printf("Error setting database maximum idle connections from value: %s. Default to %d", dbMaxIdleConnsStr, dbMaxIdleConns)
+		log.Print(err)
+	}
 
 	dbCredentials := DatabaseCredentials{DB_DRIVER, dbUrl, dbUser, dbPassword, dbName, dbHost, dbPort, dbMaxOpenConns, dbMaxIdleConns}
 	if !dbCredentials.IsValid() {
@@ -391,8 +438,6 @@ func main() {
 	} else {
 		log.Print("Any application name available")
 	}
-
-	var err error
 
 	//UUID regular expression
 	log.Print("Compiling uuid regular expression")
@@ -472,7 +517,7 @@ func main() {
 		waitGroup.Add(1)
 		running = true
 		prospects = make(chan ProspectForm, asyncRequestSize)
-		go batchAddProspect(db, time.Duration(asyncProcessInterval))
+		go batchAddProspect(db, time.Duration(asyncProcessInterval), dbMaxOpenConns)
 		log.Printf("Asynchronous requests enabled. Request queue size set to %d", asyncRequestSize)
 		log.Printf("Asynchronous process interval is %d seconds", asyncProcessInterval)
 	}
