@@ -33,6 +33,7 @@ const (
 	DB_DRIVER           = "postgres"
 	CONTENT_TYPE_NAME   = "Content-Type"
 	JSON_CONTENT_TYPE   = "application/json"
+	XFF_HEADER          = "X-Forwarded-For"
 	STRING_SIZE_LIMIT   = 500
 	FEEDBACK_SIZE_LIMIT = 3000
 	BotError            = "BotError"
@@ -78,6 +79,13 @@ type RequestLocation int
 const (
 	Header RequestLocation = 1 << iota
 	Body
+)
+
+type Position int
+
+const (
+	First Position = 1 << iota
+	Last
 )
 
 type BotDetection struct {
@@ -232,7 +240,7 @@ func GetenvWithDefault(envKey string, defaultVal string) string {
 	return envVal
 }
 
-func processIpAddress(remoteAddr string) string {
+func processIpAddressFromAddr(remoteAddr string) string {
 	ip, _, err := net.SplitHostPort(remoteAddr)
 	if err == nil {
 		return ip
@@ -244,6 +252,47 @@ func processIpAddress(remoteAddr string) string {
 	}
 
 	return ip2.String()
+}
+
+func processIpAddressFromXFF(req *http.Request, position Position) string {
+	ipAddresses := strings.Split(req.Header.Get(XFF_HEADER), ",")
+
+	switch position {
+	case Last:
+		return strings.TrimSpace(ipAddresses[len(ipAddresses) - 1])
+	case First:
+		fallthrough;
+	default:
+		return strings.TrimSpace(ipAddresses[0])
+	}
+}
+
+var ipAddressLocation string
+
+func processIpAddress(req *http.Request) string {
+	var ipAddress string
+
+	switch ipAddressLocation {
+	case "xff_first":
+		ipAddress = processIpAddressFromXFF(req, First)
+		if len(ipAddress) > 0 {
+			break
+		}
+		fallthrough;
+	case "xff_last":
+		ipAddress = processIpAddressFromXFF(req, Last)
+		if len(ipAddress) > 0 {
+			break
+		}
+		fallthrough;
+	case "normal":
+		fallthrough;
+	default:
+		ipAddress = processIpAddressFromAddr(req.RemoteAddr)
+		break
+	}
+
+	return ipAddress
 }
 
 func isJSON(str string) bool {
@@ -491,6 +540,9 @@ func main() {
 
 	log.Printf("Creating robot detection with %#v", botDetection)
 
+	//IP address location
+	ipAddressLocation = GetenvWithDefault("IP_ADDRESS_LOCATION", "normal")
+
 	//Asynchronous database writes
 	asyncRequest, err = strconv.ParseBool(GetenvWithDefault("ASYNC_REQUEST", "false"))
 	if(nil != err) {
@@ -549,7 +601,7 @@ func main() {
 
 func setupHttpHandlers(db *sql.DB) (CreateHandler, ErrorHandler, NotFoundHandler) {
 	createHandler := func(res http.ResponseWriter, req *http.Request, prospect ProspectForm) (int, string) {
-		prospect.IpAddress = processIpAddress(req.RemoteAddr)
+		prospect.IpAddress = processIpAddress(req)
 		prospect.Referrer = req.Referer()
 		prospect.UserAgent = req.UserAgent()
 
