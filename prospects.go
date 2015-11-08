@@ -185,6 +185,7 @@ func (prospect ProspectForm) Validate(errors binding.Errors, req *http.Request) 
 			if failed {
 				message := fmt.Sprintf("Invalid date of birth \"%s\" specified", prospect.DateOfBirth)
 				errors = addError(errors, []string{"dob"}, binding.TypeError, message)
+				log.Print(err)
 			}
 		}
 
@@ -207,7 +208,6 @@ func (prospect ProspectForm) Validate(errors binding.Errors, req *http.Request) 
 			message := "Go away spambot! We've alerted the authorities"
 			errors = addError(errors, []string{"spambot"}, BotError, message)
 		}
-
 	}
 
 	return errors
@@ -492,6 +492,7 @@ func main() {
 	log.Print("Compiling uuid regular expression")
 	uuidRegex, err = regexp.Compile(UUID_REGEX)
 	if nil != err {
+		log.Print(err)
 		log.Fatalf("UUID regex compilation failed for %s", UUID_REGEX)
 	}
 
@@ -499,6 +500,7 @@ func main() {
 	log.Print("Compiling e-mail regular expression")
 	emailRegex, err = regexp.Compile(EMAIL_REGEX)
 	if nil != err {
+		log.Print(err)
 		log.Fatalf("E-mail regex compilation failed for %s", EMAIL_REGEX)
 	}
 
@@ -528,12 +530,14 @@ func main() {
 	if nil != err {
 		botDetectionMustMatch = true
 		log.Printf("Error converting boolean input for field %s with value %s. Defaulting to true.", "BOTDETECT_MUSTMATCH", botDetectionMustMatchStr)
+		log.Print(err)
 	}
 
 	botDetectionPlayCoy, err := strconv.ParseBool(botDetectionPlayCoyStr)
 	if nil != err {
 		botDetectionPlayCoy = true
 		log.Printf("Error converting boolean input for field %s with value %s. Defaulting to true.", "BOTDETECT_PLAYCOY", botDetectionPlayCoyStr)
+		log.Print(err)
 	}
 
 	botDetection = BotDetection{botDetectionFieldLocation, botDetectionFieldName, botDetectionFieldValue, botDetectionMustMatch, botDetectionPlayCoy}
@@ -549,6 +553,7 @@ func main() {
 		asyncRequest = false
 		running = false
 		log.Printf("Error converting input for field ASYNC_REQUEST. Defaulting to false.")
+		log.Print(err)
 	}
 
 	asyncRequestSizeStr := GetenvWithDefault("ASYNC_REQUEST_SIZE", "100000")
@@ -556,6 +561,7 @@ func main() {
 	if nil != err {
 		asyncRequestSize = 100000
 		log.Printf("Error converting input for field ASYNC_REQUEST_SIZE. Defaulting to 100000.")
+		log.Print(err)
 	}
 
 	asyncProcessIntervalStr := GetenvWithDefault("ASYNC_PROCESS_INTERVAL", "5")
@@ -563,6 +569,7 @@ func main() {
 	if nil != err {
 		asyncProcessInterval = 5
 		log.Printf("Error converting input for field ASYNC_PROCESS_INTERVAL. Defaulting to 5.")
+		log.Print(err)
 	}
 
 	if asyncRequest {
@@ -842,6 +849,7 @@ func runHttpServer(createHandler CreateHandler, errorHandler ErrorHandler, notFo
 	sslRedirect, err := strconv.ParseBool(GetenvWithDefault("SSL_REDIRECT", "false"))
 	if nil != err {
 		sslRedirect = false
+		log.Print(err)
 	}
 	log.Printf("Setting SSL redirect to %t", sslRedirect)
 

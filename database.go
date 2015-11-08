@@ -58,6 +58,7 @@ func (dbCred DatabaseCredentials) GetDatabase() *sql.DB {
 
 	if nil != err {
 		log.Printf("Error opening configured database: %s", dbCred.GetString())
+		log.Print(err)
 	} else {
 		db.SetMaxOpenConns(dbCred.MaxOpenConns)
 		db.SetMaxIdleConns(dbCred.MaxIdleConns)
