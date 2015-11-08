@@ -16,11 +16,11 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"syscall"
-	"sync"
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
+	"syscall"
 	"time"
 )
 
@@ -259,9 +259,9 @@ func processIpAddressFromXFF(req *http.Request, position Position) string {
 
 	switch position {
 	case Last:
-		return strings.TrimSpace(ipAddresses[len(ipAddresses) - 1])
+		return strings.TrimSpace(ipAddresses[len(ipAddresses)-1])
 	case First:
-		fallthrough;
+		fallthrough
 	default:
 		return strings.TrimSpace(ipAddresses[0])
 	}
@@ -278,15 +278,15 @@ func processIpAddress(req *http.Request) string {
 		if len(ipAddress) > 0 {
 			break
 		}
-		fallthrough;
+		fallthrough
 	case "xff_last":
 		ipAddress = processIpAddressFromXFF(req, Last)
 		if len(ipAddress) > 0 {
 			break
 		}
-		fallthrough;
+		fallthrough
 	case "normal":
-		fallthrough;
+		fallthrough
 	default:
 		ipAddress = processIpAddressFromAddr(req.RemoteAddr)
 		break
@@ -382,7 +382,7 @@ func batchAddProspect(db *sql.DB, asyncProcessInterval time.Duration, dbMaxOpenC
 		processing := true
 		for processing {
 			select {
-			case prospect, ok := <- prospects:
+			case prospect, ok := <-prospects:
 				if ok {
 					elements = append(elements, prospect)
 					break
@@ -545,9 +545,9 @@ func main() {
 
 	//Asynchronous database writes
 	asyncRequest, err = strconv.ParseBool(GetenvWithDefault("ASYNC_REQUEST", "false"))
-	if(nil != err) {
-		asyncRequest = false;
-		running = false;
+	if nil != err {
+		asyncRequest = false
+		running = false
 		log.Printf("Error converting input for field ASYNC_REQUEST. Defaulting to false.")
 	}
 
@@ -565,7 +565,7 @@ func main() {
 		log.Printf("Error converting input for field ASYNC_PROCESS_INTERVAL. Defaulting to 5.")
 	}
 
-	if(asyncRequest) {
+	if asyncRequest {
 		waitGroup.Add(1)
 		running = true
 		prospects = make(chan ProspectForm, asyncRequestSize)
@@ -579,7 +579,7 @@ func main() {
 	signal.Notify(signals, os.Interrupt)
 	signal.Notify(signals, syscall.SIGTERM)
 	go func() {
-		<- signals
+		<-signals
 		log.Print("Shutting down...")
 		running = false
 		waitGroup.Wait()
@@ -621,12 +621,12 @@ func setupHttpHandlers(db *sql.DB) (CreateHandler, ErrorHandler, NotFoundHandler
 		res.Header().Set(CONTENT_TYPE_NAME, JSON_CONTENT_TYPE)
 		var response Response
 
-		if(asyncRequest && running) {
+		if asyncRequest && running {
 			prospects <- prospect
 			responseStr := "Successfully added prospect"
 			response = Response{Code: http.StatusAccepted, Message: responseStr}
 			log.Print(responseStr)
-		} else if(asyncRequest && !running) {
+		} else if asyncRequest && !running {
 			responseStr := "Could not add prospect due to server maintenance"
 			response = Response{Code: http.StatusServiceUnavailable, Message: responseStr}
 			log.Print(responseStr)
@@ -715,7 +715,7 @@ func setupHttpHandlers(db *sql.DB) (CreateHandler, ErrorHandler, NotFoundHandler
 	return createHandler, errorHandler, notFoundHandler
 }
 
-func addProspect(db *sql.DB, prospect ProspectForm, statement* sql.Stmt) (int64, error) {
+func addProspect(db *sql.DB, prospect ProspectForm, statement *sql.Stmt) (int64, error) {
 	var email sql.NullString
 	if len(prospect.Email) != 0 {
 		email = sql.NullString{prospect.Email, true}
