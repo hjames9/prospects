@@ -689,9 +689,13 @@ func setupHttpHandlers(db *sql.DB) (CreateHandler, ErrorHandler, NotFoundHandler
 				res.WriteHeader(http.StatusBadRequest)
 				response = Response{Code: http.StatusBadRequest, Message: errors[0].Error()}
 			} else if errors.Has(BotError) {
-				if botDetection.PlayCoy {
+				if botDetection.PlayCoy && !asyncRequest {
 					res.WriteHeader(http.StatusCreated)
 					response = Response{Code: http.StatusCreated, Message: "Successfully added prospect", Id: getNextId(db)}
+					log.Printf("Robot detected: %s. Playing coy.", errors[0].Error())
+				} else if botDetection.PlayCoy && asyncRequest {
+					res.WriteHeader(http.StatusAccepted)
+					response = Response{Code: http.StatusAccepted, Message: "Successfully added prospect"}
 					log.Printf("Robot detected: %s. Playing coy.", errors[0].Error())
 				} else {
 					res.WriteHeader(http.StatusBadRequest)
