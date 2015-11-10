@@ -813,12 +813,12 @@ func addProspect(db *sql.DB, prospect ProspectForm, statement *sql.Stmt) (int64,
 	var err error
 	if nil == statement {
 		err = db.QueryRow(QUERY, prospect.LeadId, prospect.AppName, email, prospect.Pinterest, prospect.Facebook, prospect.Instagram, prospect.Twitter, prospect.Google, prospect.Youtube, prospect.Extended, feedback, referrer, pageReferrer, firstName, lastName, phoneNumber, dob, gender, zipCode, language, userAgent, cookies, latitude, longitude, ipAddress, miscellaneous, time.Now()).Scan(&lastInsertId)
-
-		if nil == err {
-			log.Printf("New prospect id = %d", lastInsertId)
-		}
 	} else {
-		_, err = statement.Exec(prospect.LeadId, prospect.AppName, email, prospect.Pinterest, prospect.Facebook, prospect.Instagram, prospect.Twitter, prospect.Google, prospect.Youtube, prospect.Extended, feedback, referrer, pageReferrer, firstName, lastName, phoneNumber, dob, gender, zipCode, language, userAgent, cookies, latitude, longitude, ipAddress, miscellaneous, time.Now())
+		err = statement.QueryRow(prospect.LeadId, prospect.AppName, email, prospect.Pinterest, prospect.Facebook, prospect.Instagram, prospect.Twitter, prospect.Google, prospect.Youtube, prospect.Extended, feedback, referrer, pageReferrer, firstName, lastName, phoneNumber, dob, gender, zipCode, language, userAgent, cookies, latitude, longitude, ipAddress, miscellaneous, time.Now()).Scan(&lastInsertId)
+	}
+
+	if nil == err {
+		log.Printf("New prospect id = %d", lastInsertId)
 	}
 
 	return lastInsertId, err
