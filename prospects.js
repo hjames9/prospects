@@ -51,6 +51,41 @@ function getParameterFromNvp(name, value)
     return name + "=" + encodeURIComponent(value) + "&";
 };
 
+function isBetween(value, min, max)
+{
+    return(value >= min && value <= max);
+};
+
+function isInformational(code)
+{
+    return isBetween(code, 100, 199);
+};
+
+function isSuccess(code)
+{
+    return isBetween(code, 200, 299);
+};
+
+function isRedirection(code)
+{
+    return isBetween(code, 300, 399);
+};
+
+function isClientError(code)
+{
+    return isBetween(code, 400, 499);
+};
+
+function isServerError(code)
+{
+    return isBetween(code, 500, 599);
+};
+
+function isError(code)
+{
+    return isClientError(code) || isServerError(code);
+};
+
 function Prospect()
 {
     this.uuid = this.getUUID();
@@ -292,8 +327,10 @@ Prospect.prototype.save = function(successFunc, errorFunc) {
 
     xmlHttp.onload = function(e)
     {
-        if(null != successFunc) {
+        if(null != successFunc && isSuccess(xmlHttp.status)) {
             successFunc(JSON.parse(xmlHttp.responseText), xmlHttp.status, that);
+        } else if(null != errorFunc && isError(xmlHttp.status)) {
+            errorFunc(JSON.parse(xmlHttp.responseText), xmlHttp.status, that);
         }
     };
 
