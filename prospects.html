@@ -28,12 +28,18 @@
             <label for="email">E-mail:</label><br>
             <input type="email" name="email"><br>
         </div>
-        <input type="checkbox" name="pinterest" value="true"> Pinterest
-        <input type="checkbox" name="facebook" value="true"> Facebook
-        <input type="checkbox" name="instagram" value="true"> Instagram
-        <input type="checkbox" name="twitter" value="true"> Twitter
-        <input type="checkbox" name="google" value="true"> Google
-        <input type="checkbox" name="youtube" value="true"> Youtube
+        <select name="leadsource">
+            <option value="landing" selected>Landing</option>
+            <option value="email">Email</option>
+            <option value="phone">Phone</option>
+            <option value="extended">Extended</option>
+	        <option value="pinterest">Pinterest</option>
+	        <option value="facebook">Facebook</option>
+	        <option value="instagram">Instagram</option>
+	        <option value="twitter">Twitter</option>
+	        <option value="google">Google</option>
+	        <option value="youtube">Youtube</option>
+        </select>
         <input type="hidden" name="appname" value="testapp"/>
         <br>
         <input type="radio" name="gender" value="female">Female

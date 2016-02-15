@@ -40,18 +40,6 @@ function setupForm(formElement)
             emailText = inputs[iter];
         else if(inputs[iter].name == "phonenumber")
             phonenumberText = inputs[iter];
-        else if(inputs[iter].name == "pinterest")
-            pinterestBox = inputs[iter];
-        else if(inputs[iter].name == "facebook")
-            facebookBox = inputs[iter];
-        else if(inputs[iter].name == "instagram")
-            instagramBox = inputs[iter];
-        else if(inputs[iter].name == "twitter")
-            twitterBox = inputs[iter];
-        else if(inputs[iter].name == "google")
-            googleBox = inputs[iter];
-        else if(inputs[iter].name == "youtube")
-            youtubeBox = inputs[iter];
         else if(inputs[iter].name == "gender" && inputs[iter].value == "female")
             femaleRadio = inputs[iter];
         else if(inputs[iter].name == "gender" && inputs[iter].value == "male")
@@ -73,7 +61,8 @@ function setupForm(formElement)
         feedbackBox = feedbackTextArea[0];
     }
 
-    var contestSelect = formElement.getElementsByTagName("select")[0];
+    var leadSourceSelect = formElement.getElementsByTagName("select")[0];
+    var contestSelect = formElement.getElementsByTagName("select")[1];
 
     var prospectsThis = this;
 
@@ -84,7 +73,6 @@ function setupForm(formElement)
         var prospect = new Prospect();
 
         prospect.setUrl(formElement.action);
-        prospect.setExtended(true);
 
         if(null != appnameText)
             prospect.setAppName(appnameText.value);
@@ -103,24 +91,6 @@ function setupForm(formElement)
 
         if(null != phonenumberText)
             prospect.setPhoneNumber(phonenumberText.value);
-
-        if(null != pinterestBox && pinterestBox.checked)
-            prospect.setPinterest(pinterestBox.checked);
-
-        if(null != facebookBox && facebookBox.checked)
-            prospect.setFacebook(facebookBox.checked);
-
-        if(null != instagramBox && instagramBox.checked)
-            prospect.setInstagram(instagramBox.checked);
-
-        if(null != twitterBox && twitterBox.checked)
-            prospect.setTwitter(twitterBox.checked);
-
-        if(null != googleBox && googleBox.checked)
-            prospect.setGoogle(googleBox.checked);
-
-        if(null != youtubeBox && youtubeBox.checked)
-            prospect.setYoutube(youtubeBox.checked);
 
         if(null != femaleRadio && femaleRadio.checked)
             prospect.setGender(femaleRadio.value);
@@ -151,6 +121,14 @@ function setupForm(formElement)
 
             prospect.setMiscellaneous(JSON.stringify(contest));
         }
+
+        if(null != leadSourceSelect && leadSourceSelect.value.length > 0) {
+            console.log(leadSourceSelect.name);
+            console.log(leadSourceSelect.value);
+            prospect.setLeadSource(leadSourceSelect.value);
+        }
+
+        console.log("Prospect is ready? " + prospect.ready());
 
         prospect.save(
             function(response, status, pros)

@@ -4,19 +4,15 @@ COMMENT ON SCHEMA prospects IS 'Prospects schema holds all objects for applicati
 
 COMMENT ON TYPE gender IS 'Gender type between male or female';
 
+COMMENT ON TYPE lead_source IS 'Source lead was generated from';
+
 COMMENT ON TABLE leads IS 'Leads table provides unnormalized data for every data point a potential customer is willing to provide. A lead can use multiple rows to provide different data, depending on the interface workflow they''ve chosen.';
 
 COMMENT ON COLUMN leads.id IS 'Primary key id of the current lead''s interaction.';
 COMMENT ON COLUMN leads.lead_id IS 'Unique id (uuid) of the lead.';
 COMMENT ON COLUMN leads.app_name IS 'Application name that lead is for.';
 COMMENT ON COLUMN leads.email IS 'E-mail address of the lead.';
-COMMENT ON COLUMN leads.used_pinterest IS 'Whether lead came from pinterest.';
-COMMENT ON COLUMN leads.used_facebook IS 'Whether lead came from facebook.';
-COMMENT ON COLUMN leads.used_instagram IS 'Whether lead came from instagram.';
-COMMENT ON COLUMN leads.used_twitter IS 'Whether lead came from twitter.';
-COMMENT ON COLUMN leads.used_google IS 'Whether lead came from google.';
-COMMENT ON COLUMN leads.used_youtube IS 'Whether lead came from youtube.';
-COMMENT ON COLUMN leads.extended IS 'Extended data provided by lead.';
+COMMENT ON COLUMN leads.lead_source IS 'Source lead was generated from.';
 COMMENT ON COLUMN leads.feedback IS 'Feedback provided by lead.';
 COMMENT ON COLUMN leads.first_name IS 'First name of lead.';
 COMMENT ON COLUMN leads.last_name IS 'Last name of lead.';
@@ -37,9 +33,12 @@ COMMENT ON COLUMN leads.is_valid IS 'Determines if lead was determined to be val
 COMMENT ON COLUMN leads.created_at IS 'Timestamp of lead creation.';
 
 COMMENT ON CONSTRAINT leads_pkey ON leads IS 'Primary key constraint for leads id column.';
-COMMENT ON CONSTRAINT leads_check ON leads IS 'Check constraint used to enforce that a given lead provides source information via either e-mail address, social media reference or feedback.';
+COMMENT ON CONSTRAINT leads_check ON leads IS 'Check constraint used to enforce that a given lead with a landing source has an e-mail address or phone number.';
+COMMENT ON CONSTRAINT leads_check1 ON leads IS 'Check constraint used to enforce that a given lead with an email source has an e-mail address.';
+COMMENT ON CONSTRAINT leads_check2 ON leads IS 'Check constraint used to enforce that a given lead with a phone source has a phone number.';
+COMMENT ON CONSTRAINT leads_check3 ON leads IS 'Check constraint used to enforce that a given lead with a feedback source has feedback.';
 COMMENT ON CONSTRAINT leads_email_check ON leads IS 'Check constraint used to enforce correct e-mail address format.';
-COMMENT ON CONSTRAINT leads_geolocation_check ON leads IS 'Check constraint used to enforce correct values for latitude and longtiude.';
+COMMENT ON CONSTRAINT leads_geolocation_check ON leads IS 'Check constraint used to enforce correct values for latitude and longitude.';
 
 COMMENT ON SEQUENCE leads_id_seq IS 'Primary key sequence for leads table.  Values are obfuscated since they''re used on public interfaces';
 
@@ -51,13 +50,7 @@ COMMENT ON COLUMN sneezers.id IS 'Primary key of current lead''s interaction';
 COMMENT ON COLUMN sneezers.lead_id IS 'Unique id (uuid) of sneezer';
 COMMENT ON COLUMN sneezers.app_name IS 'Application name that sneezer is accessing';
 COMMENT ON COLUMN sneezers.email IS 'E-mail address of sneezer';
-COMMENT ON COLUMN sneezers.used_pinterest IS 'Whether sneezer came from pinterest';
-COMMENT ON COLUMN sneezers.used_facebook IS 'Whether sneezer came from facebook';
-COMMENT ON COLUMN sneezers.used_instagram IS 'Whether sneezer came from instagram';
-COMMENT ON COLUMN sneezers.used_twitter IS 'Whether sneezer came from twitter';
-COMMENT ON COLUMN sneezers.used_google IS 'Whether sneezer came from google';
-COMMENT ON COLUMN sneezers.used_youtube IS 'Whether sneezer came from youtube';
-COMMENT ON COLUMN sneezers.extended IS 'Extended data provided by sneezer.';
+COMMENT ON COLUMN sneezers.lead_source IS 'Source lead was generated from';
 COMMENT ON COLUMN sneezers.feedback IS 'Feedback provided by sneezer';
 COMMENT ON COLUMN sneezers.first_name IS 'First name of sneezer';
 COMMENT ON COLUMN sneezers.last_name IS 'Last name of sneezer';

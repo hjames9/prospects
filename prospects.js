@@ -91,6 +91,7 @@ function Prospect()
     this.uuid = this.getUUID();
     this.adhocFields = {};
     this.adhocHeaders = {};
+    this.leadSource = 'landing';
 };
 
 Prospect.prototype.getUUID = function()
@@ -122,6 +123,14 @@ Prospect.prototype.getAppName = function() {
     return this.appName;
 };
 
+Prospect.prototype.getLeadSource = function() {
+    return this.leadSource;
+};
+
+Prospect.prototype.setLeadSource = function(leadSource) {
+    this.leadSource = leadSource;
+};
+
 Prospect.prototype.setEmail = function(email) {
     this.email = email;
 };
@@ -131,63 +140,78 @@ Prospect.prototype.getEmail = function() {
 };
 
 Prospect.prototype.setPinterest = function(pinterest) {
-    this.pinterest = pinterest;
+    if(pinterest) {
+        this.leadSource = 'pinterest';
+    }
 };
 
 Prospect.prototype.getPinterest = function() {
-    return this.pinterest;
+    return this.leadSource == 'pinterest';
 };
 
 Prospect.prototype.setFacebook = function(facebook) {
-    this.facebook = facebook;
+    if(facebook) {
+        this.leadSource = 'facebook';
+    }
 };
 
 Prospect.prototype.getFacebook = function() {
-    return this.facebook;
+    return this.leadSource == 'facebook';
 };
 
 Prospect.prototype.setInstagram = function(instagram) {
-    this.instagram = instagram;
+    if(instagram) {
+        this.leadSource = 'instagram';
+    }
 };
 
 Prospect.prototype.getInstagram = function() {
-    return this.instagram;
+    return this.leadSource == 'instagram';
 };
 
 Prospect.prototype.setTwitter = function(twitter) {
-    this.twitter = twitter;
+    if(twitter) {
+        this.leadSource = 'twitter';
+    }
 };
 
 Prospect.prototype.getTwitter = function() {
-    return this.twitter;
+    return this.leadSource == 'twitter';
 };
 
 Prospect.prototype.setGoogle = function(google) {
-    this.google = google;
+    if(google) {
+        this.leadSource = 'google';
+    }
 };
 
 Prospect.prototype.getGoogle = function() {
-    return this.google;
+    return this.leadSource == 'google';
 };
 
 Prospect.prototype.setYoutube = function(youtube) {
-    this.youtube = youtube;
+    if(youtube) {
+        this.leadSource = 'youtube';
+    }
 };
 
 Prospect.prototype.getYoutube = function() {
-    return this.youtube;
+    return this.leadSource == 'youtube';
 };
 
 Prospect.prototype.setExtended = function(extended) {
-    this.extended = extended;
+    if(extended) {
+        this.leadSource = 'extended';
+    }
 };
 
 Prospect.prototype.getExtended = function() {
-    return this.extended;
+    return this.leadSource == 'extended';
 };
 
 Prospect.prototype.setFeedback = function(feedback) {
     this.feedback = feedback;
+    this.leadSource = 'feedback';
 };
 
 Prospect.prototype.getFeedback = function() {
@@ -304,16 +328,17 @@ Prospect.prototype.getAdhocHeaders = function() {
 
 Prospect.prototype.ready = function() {
     return NotEmpty(this.url) && NotEmpty(this.uuid) && NotEmpty(this.appName)
-            && (NotEmpty(this.email)
-             || NotEmpty(this.phoneNumber)
-             || IsBooleanTrue(this.pinterest)
-             || IsBooleanTrue(this.facebook)
-             || IsBooleanTrue(this.twitter)
-             || IsBooleanTrue(this.instagram)
-             || IsBooleanTrue(this.google)
-             || IsBooleanTrue(this.youtube)
-             || IsBooleanTrue(this.extended)
-             || NotEmpty(this.feedback));
+            && ((this.leadSource == 'landing' && (NotEmpty(this.email) || NotEmpty(this.phoneNumber)))
+             || (this.leadSource == 'email' && NotEmpty(this.email))
+             || (this.leadSource == 'phone' && NotEmpty(this.phoneNumber))
+             || (this.leadSource == 'feedback' && NotEmpty(this.feedback))
+             || this.leadSource == 'extended'
+             || this.leadSource == 'pinterest'
+             || this.leadSource == 'facebook'
+             || this.leadSource == 'instagram'
+             || this.leadSource == 'twitter'
+             || this.leadSource == 'google'
+             || this.leadSource == 'youtube');
 };
 
 Prospect.prototype.save = function(successFunc, errorFunc) {
@@ -357,26 +382,8 @@ Prospect.prototype.save = function(successFunc, errorFunc) {
     if(NotEmpty(this.email))
         queryStr += getParameterFromNvp("email", this.email);
 
-    if(IsBoolean(this.pinterest))
-        queryStr += getParameterFromNvp("pinterest", this.pinterest);
-
-    if(IsBoolean(this.facebook))
-        queryStr += getParameterFromNvp("facebook", this.facebook);
-
-    if(IsBoolean(this.instagram))
-        queryStr += getParameterFromNvp("instagram", this.instagram);
-
-    if(IsBoolean(this.twitter))
-        queryStr += getParameterFromNvp("twitter", this.twitter);
-
-    if(IsBoolean(this.google))
-        queryStr += getParameterFromNvp("google", this.google);
-
-    if(IsBoolean(this.youtube))
-        queryStr += getParameterFromNvp("youtube", this.youtube);
-
-    if(IsBoolean(this.extended))
-        queryStr += getParameterFromNvp("extended", this.extended);
+    if(NotEmpty(this.leadSource))
+        queryStr += getParameterFromNvp("leadsource", this.leadSource);
 
     if(NotEmpty(this.firstName))
         queryStr += getParameterFromNvp("firstname", this.firstName);

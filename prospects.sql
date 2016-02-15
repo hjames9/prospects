@@ -6,19 +6,15 @@ SET search_path TO prospects,public;
 
 CREATE TYPE gender AS ENUM ('male', 'female');
 
+CREATE TYPE lead_source AS ENUM ('landing', 'email', 'phone', 'extended', 'feedback', 'pinterest', 'facebook', 'instagram', 'twitter', 'google', 'youtube');
+
 CREATE TABLE leads
 (
     id SERIAL8 NOT NULL PRIMARY KEY,
     lead_id UUID NOT NULL,
     app_name VARCHAR NOT NULL,
     email VARCHAR NULL,
-    used_pinterest BOOLEAN NOT NULL DEFAULT FALSE,
-    used_facebook BOOLEAN NOT NULL DEFAULT FALSE,
-    used_instagram BOOLEAN NOT NULL DEFAULT FALSE,
-    used_twitter BOOLEAN NOT NULL DEFAULT FALSE,
-    used_google BOOLEAN NOT NULL DEFAULT FALSE,
-    used_youtube BOOLEAN NOT NULL DEFAULT FALSE,
-    extended BOOLEAN NOT NULL DEFAULT FALSE,
+    lead_source LEAD_SOURCE NOT NULL,
     feedback VARCHAR NULL,
     referrer VARCHAR NULL,
     page_referrer VARCHAR NULL,
@@ -39,7 +35,10 @@ CREATE TABLE leads
     created_at TIMESTAMP NOT NULL,
     CHECK(email ~* '^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$'),
     CHECK(geolocation[0] >= -90.0 AND geolocation[0] <= 90.0 AND geolocation[1] >= -180.0 AND geolocation[1] <= 180.0),
-    CHECK(email IS NOT NULL OR phone_number IS NOT NULL OR used_pinterest IS TRUE OR used_facebook IS TRUE OR used_instagram IS TRUE OR used_twitter IS TRUE OR used_google IS TRUE OR used_youtube IS TRUE OR extended IS TRUE OR feedback IS NOT NULL)
+    CHECK(lead_source <> 'landing' OR (lead_source = 'landing' AND (email IS NOT NULL OR phone_number IS NOT NULL))),
+    CHECK(lead_source <> 'phone' OR (lead_source = 'phone' AND phone_number IS NOT NULL)),
+    CHECK(lead_source <> 'email' OR (lead_source = 'email' AND email IS NOT NULL)),
+    CHECK(lead_source <> 'feedback' OR (lead_source = 'feedback' AND feedback IS NOT NULL))
 );
 
 ALTER SEQUENCE leads_id_seq INCREMENT BY 7 START WITH 31337 RESTART WITH 31337;
@@ -50,13 +49,7 @@ SELECT MAX(id) AS id,
        lead_id,
        app_name,
        MAX(email) AS email,
-       BOOL_OR(used_pinterest) AS used_pinterest,
-       BOOL_OR(used_facebook) AS used_facebook,
-       BOOL_OR(used_instagram) AS used_instagram,
-       BOOL_OR(used_twitter) AS used_twitter,
-       BOOL_OR(used_google) AS used_google,
-       BOOL_OR(used_youtube) AS used_youtube,
-       BOOL_OR(extended) AS extended,
+       MAX(lead_source) AS lead_source,
        MAX(feedback) AS feedback,
        MAX(first_name) AS first_name,
        MAX(last_name) AS last_name,

@@ -25,8 +25,9 @@ import (
 )
 
 const (
-	QUERY               = "INSERT INTO prospects.leads(lead_id, app_name, email, used_pinterest, used_facebook, used_instagram, used_twitter, used_google, used_youtube, extended, feedback, referrer, page_referrer, first_name, last_name, phone_number, dob, gender, zip_code, language, user_agent, cookies, geolocation, ip_address, miscellaneous, created_at) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, POINT($23, $24), $25, $26, $27) RETURNING id;"
+	QUERY               = "INSERT INTO prospects.leads(lead_id, app_name, email, lead_source, feedback, referrer, page_referrer, first_name, last_name, phone_number, dob, gender, zip_code, language, user_agent, cookies, geolocation, ip_address, miscellaneous, created_at) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, POINT($17, $18), $19, $20, $21) RETURNING id;"
 	ID_QUERY            = "SELECT last_value, increment_by FROM prospects.leads_id_seq"
+	LEAD_SOURCE_QUERY   = "SELECT enum_range(NULL::prospects.lead_source) AS lead_sources"
 	EMAIL_REGEX         = "^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$"
 	UUID_REGEX          = "^[a-z0-9]{8}-[a-z0-9]{4}-[1-5][a-z0-9]{3}-[a-z0-9]{4}-[a-z0-9]{12}$"
 	POST_URL            = "/prospects"
@@ -47,13 +48,7 @@ type ProspectForm struct {
 	FirstName     string `form:"firstname"`
 	LastName      string `form:"lastname"`
 	Email         string `form:"email"`
-	Pinterest     bool   `form:"pinterest"`
-	Facebook      bool   `form:"facebook"`
-	Instagram     bool   `form:"instagram"`
-	Twitter       bool   `form:"twitter"`
-	Google        bool   `form:"google"`
-	Youtube       bool   `form:"youtube"`
-	Extended      bool   `form:"extended"`
+	LeadSource    string `form:"leadsource" binding:"required"`
 	Feedback      string `form:"feedback"`
 	PhoneNumber   string `form:"phonenumber"`
 	DateOfBirth   string `form:"dob"`
@@ -125,6 +120,7 @@ var appNames map[string]bool
 var uuidRegex *regexp.Regexp
 var emailRegex *regexp.Regexp
 var botDetection BotDetection
+var leadSources map[string]bool
 
 func (prospect ProspectForm) Validate(errors binding.Errors, req *http.Request) binding.Errors {
 	errors = validateSizeLimit(prospect.LeadId, "leadid", STRING_SIZE_LIMIT, errors)
@@ -134,6 +130,7 @@ func (prospect ProspectForm) Validate(errors binding.Errors, req *http.Request) 
 	errors = validateSizeLimit(prospect.FirstName, "firstname", STRING_SIZE_LIMIT, errors)
 	errors = validateSizeLimit(prospect.LastName, "lastname", STRING_SIZE_LIMIT, errors)
 	errors = validateSizeLimit(prospect.Email, "email", STRING_SIZE_LIMIT, errors)
+	errors = validateSizeLimit(prospect.LeadSource, "leadsource", STRING_SIZE_LIMIT, errors)
 	errors = validateSizeLimit(prospect.Feedback, "feedback", FEEDBACK_SIZE_LIMIT, errors)
 	errors = validateSizeLimit(prospect.PhoneNumber, "phonenumber", STRING_SIZE_LIMIT, errors)
 	errors = validateSizeLimit(prospect.DateOfBirth, "dob", STRING_SIZE_LIMIT, errors)
@@ -156,9 +153,25 @@ func (prospect ProspectForm) Validate(errors binding.Errors, req *http.Request) 
 			errors = addError(errors, []string{"leadid"}, binding.TypeError, message)
 		}
 
-		invalidId := len(prospect.Email) == 0 && len(prospect.PhoneNumber) == 0 && !prospect.Pinterest && !prospect.Facebook && !prospect.Instagram && !prospect.Twitter && !prospect.Google && !prospect.Youtube && !prospect.Extended && len(prospect.Feedback) == 0
-		if invalidId {
-			errors = addError(errors, []string{"email", "phonenumber", "pinterest", "facebook", "instagram", "twitter", "google", "youtube", "extended", "feedback"}, binding.RequiredError, "At least one of email, pinterest, facebook, instagram, twitter, google, youtube, extended, or feedback is required")
+		if !leadSources[prospect.LeadSource] {
+			message := fmt.Sprintf("Invalid lead source \"%s\" specified", prospect.LeadSource)
+			errors = addError(errors, []string{"leadsource"}, binding.TypeError, message)
+		}
+
+		if prospect.LeadSource == "landing" && len(prospect.Email) == 0 && len(prospect.PhoneNumber) == 0 {
+			errors = addError(errors, []string{"leadsource", "email", "phonenumber"}, binding.RequiredError, "Email address or Phone number required with landing lead source.")
+		}
+
+		if prospect.LeadSource == "email" && len(prospect.Email) == 0 {
+			errors = addError(errors, []string{"leadsource", "email"}, binding.RequiredError, "Email address required with email lead source.")
+		}
+
+		if prospect.LeadSource == "phone" && len(prospect.PhoneNumber) == 0 {
+			errors = addError(errors, []string{"leadsource", "phonenumber"}, binding.RequiredError, "Phone number required with phone lead source.")
+		}
+
+		if prospect.LeadSource == "feedback" && len(prospect.Feedback) == 0 {
+			errors = addError(errors, []string{"leadsource", "feedback"}, binding.RequiredError, "Feedback required with feedback lead source.")
 		}
 
 		if len(prospect.Email) > 0 && !emailRegex.MatchString(prospect.Email) {
@@ -324,6 +337,19 @@ func getNextId(db *sql.DB) int64 {
 	}
 }
 
+func getLeadSources(db *sql.DB) string {
+	var leadSourcesStr string
+
+	err := db.QueryRow(LEAD_SOURCE_QUERY).Scan(&leadSourcesStr)
+	if nil != err {
+		log.Print(err)
+	} else {
+		leadSourcesStr = strings.Trim(leadSourcesStr, "{}")
+	}
+
+	return leadSourcesStr
+}
+
 var asyncRequest bool
 var prospects chan ProspectForm
 var running bool
@@ -486,6 +512,21 @@ func main() {
 		log.Printf("Allowable application names: %s", appNamesStr)
 	} else {
 		log.Print("Any application name available")
+	}
+
+	//Allowable lead sources
+	leadSourcesStr := getLeadSources(db)
+	if len(leadSourcesStr) > 0 {
+		leadSources = make(map[string]bool)
+
+		leadSourcesArr := strings.Split(leadSourcesStr, ",")
+		for _, leadSource := range leadSourcesArr {
+			leadSources[leadSource] = true
+		}
+
+		log.Printf("Allowable lead sources: %s", leadSourcesStr)
+	} else {
+		log.Fatal("Unable to retrieve lead sources from database")
 	}
 
 	//UUID regular expression
@@ -812,9 +853,9 @@ func addProspect(db *sql.DB, prospect ProspectForm, statement *sql.Stmt) (int64,
 	var lastInsertId int64
 	var err error
 	if nil == statement {
-		err = db.QueryRow(QUERY, prospect.LeadId, prospect.AppName, email, prospect.Pinterest, prospect.Facebook, prospect.Instagram, prospect.Twitter, prospect.Google, prospect.Youtube, prospect.Extended, feedback, referrer, pageReferrer, firstName, lastName, phoneNumber, dob, gender, zipCode, language, userAgent, cookies, latitude, longitude, ipAddress, miscellaneous, time.Now()).Scan(&lastInsertId)
+		err = db.QueryRow(QUERY, prospect.LeadId, prospect.AppName, email, prospect.LeadSource, feedback, referrer, pageReferrer, firstName, lastName, phoneNumber, dob, gender, zipCode, language, userAgent, cookies, latitude, longitude, ipAddress, miscellaneous, time.Now()).Scan(&lastInsertId)
 	} else {
-		err = statement.QueryRow(prospect.LeadId, prospect.AppName, email, prospect.Pinterest, prospect.Facebook, prospect.Instagram, prospect.Twitter, prospect.Google, prospect.Youtube, prospect.Extended, feedback, referrer, pageReferrer, firstName, lastName, phoneNumber, dob, gender, zipCode, language, userAgent, cookies, latitude, longitude, ipAddress, miscellaneous, time.Now()).Scan(&lastInsertId)
+		err = statement.QueryRow(prospect.LeadId, prospect.AppName, email, prospect.LeadSource, feedback, referrer, pageReferrer, firstName, lastName, phoneNumber, dob, gender, zipCode, language, userAgent, cookies, latitude, longitude, ipAddress, miscellaneous, time.Now()).Scan(&lastInsertId)
 	}
 
 	if nil == err {
