@@ -1,9 +1,6 @@
 {
 	"ImportPath": "github.com/hjames9/prospects",
 	"GoVersion": "go1.6",
-	"Packages": [
-		"."
-	],
 	"Deps": [
 		{
 			"ImportPath": "github.com/codegangsta/inject",
@@ -17,6 +14,11 @@
 		},
 		{
 			"ImportPath": "github.com/lib/pq",
+			"Comment": "go1.0-cutoff-59-gb269bd0",
+			"Rev": "b269bd035a727d6c1081f76e7a239a1b00674c40"
+		},
+		{
+			"ImportPath": "github.com/lib/pq/oid",
 			"Comment": "go1.0-cutoff-59-gb269bd0",
 			"Rev": "b269bd035a727d6c1081f76e7a239a1b00674c40"
 		},
