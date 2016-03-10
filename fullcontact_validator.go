@@ -1,0 +1,46 @@
+package main
+
+import (
+	"fmt"
+	"log"
+	"net/http"
+)
+
+type FullContactValidator struct {
+	ApiKey string
+}
+
+func (validator FullContactValidator) Validate(prospect Prospect) (bool, bool, string) {
+	const (
+		URL = "https://api.fullcontact.com/v2/person.json?apiKey=%s&email=%s"
+	)
+
+	var (
+		body          []byte
+		responseCode  int
+		err           error
+		miscellaneous string
+	)
+
+	isValid := false
+	wasProcessed := false
+
+	if !prospect.email.Valid {
+		log.Printf("No e-mail to validate id %d", prospect.id)
+		return isValid, wasProcessed, miscellaneous
+	}
+
+	url := fmt.Sprintf(URL, validator.ApiKey, prospect.email.String)
+	body, responseCode, err = MakeHttpGetRequest(url)
+	if nil != err {
+		log.Print("Error retrieving data from FullContact")
+		log.Print(err)
+		return isValid, wasProcessed, miscellaneous
+	} else {
+		wasProcessed = (responseCode == http.StatusOK) || (responseCode == http.StatusNotFound)
+		isValid = (responseCode == http.StatusOK)
+		miscellaneous = string(body)
+	}
+
+	return isValid, wasProcessed, miscellaneous
+}
