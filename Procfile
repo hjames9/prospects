@@ -1,1 +1,1 @@
-web: prospects
+web: cmd/prospects/prospects
