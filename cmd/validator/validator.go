@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"github.com/hjames9/prospects"
 	_ "github.com/lib/pq"
 	"io/ioutil"
 	"log"
@@ -135,9 +136,6 @@ func process(db *sql.DB, prospects []Prospect) {
 }
 
 func main() {
-	//Database connection
-	log.Print("Enabling database connectivity")
-
 	dbUrl := os.Getenv("DATABASE_URL")
 	dbUser := os.Getenv("DB_USER")
 	dbPassword := os.Getenv("DB_PASSWORD")
@@ -179,7 +177,10 @@ func main() {
 		log.Print(err)
 	}
 
-	dbCredentials := DatabaseCredentials{DB_DRIVER, dbUrl, dbUser, dbPassword, dbName, dbHost, dbPort, dbMaxOpenConns, dbMaxIdleConns}
+	//Database connection
+	log.Print("Enabling database connectivity")
+
+	dbCredentials := database.DatabaseCredentials{DB_DRIVER, dbUrl, dbUser, dbPassword, dbName, dbHost, dbPort, dbMaxOpenConns, dbMaxIdleConns}
 	if !dbCredentials.IsValid() {
 		log.Fatalf("Database credentials NOT set correctly. %#v", dbCredentials)
 	}

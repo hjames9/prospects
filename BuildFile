@@ -1,1 +1,1 @@
-make: go build -o prospects prospects.go database.go
+make: go build ./cmd/prospects && go build ./cmd/validator

@@ -26,3 +26,6 @@ _testmain.go
 *.prof
 *.swp
 prospects
+validator
+cmd/prospects/prospects
+cmd/validator/validator

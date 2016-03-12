@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-martini/martini"
+	"github.com/hjames9/prospects"
 	_ "github.com/lib/pq"
 	"github.com/martini-contrib/binding"
 	"github.com/martini-contrib/cors"
@@ -459,13 +460,6 @@ func batchAddProspect(db *sql.DB, asyncProcessInterval time.Duration, dbMaxOpenC
 }
 
 func main() {
-	//Seed random number generator
-	log.Print("Seeding random number generator")
-	rand.Seed(time.Now().UTC().UnixNano())
-
-	//Database connection
-	log.Print("Enabling database connectivity")
-
 	dbUrl := os.Getenv("DATABASE_URL")
 	dbUser := os.Getenv("DB_USER")
 	dbPassword := os.Getenv("DB_PASSWORD")
@@ -491,10 +485,17 @@ func main() {
 		log.Print(err)
 	}
 
-	dbCredentials := DatabaseCredentials{DB_DRIVER, dbUrl, dbUser, dbPassword, dbName, dbHost, dbPort, dbMaxOpenConns, dbMaxIdleConns}
+	dbCredentials := database.DatabaseCredentials{DB_DRIVER, dbUrl, dbUser, dbPassword, dbName, dbHost, dbPort, dbMaxOpenConns, dbMaxIdleConns}
 	if !dbCredentials.IsValid() {
 		log.Fatalf("Database credentials NOT set correctly. %#v", dbCredentials)
 	}
+
+	//Seed random number generator
+	log.Print("Seeding random number generator")
+	rand.Seed(time.Now().UTC().UnixNano())
+
+	//Database connection
+	log.Print("Enabling database connectivity")
 
 	db := dbCredentials.GetDatabase()
 	defer db.Close()
