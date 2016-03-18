@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/hjames9/prospects"
 	"log"
 	"net/http"
 )
@@ -31,7 +32,7 @@ func (validator FullContactValidator) Validate(prospect Prospect) (bool, bool, s
 	}
 
 	url := fmt.Sprintf(URL, validator.ApiKey, prospect.email.String)
-	body, responseCode, err = MakeHttpGetRequest(url)
+	body, responseCode, _, err = common.MakeHttpGetRequest(url)
 	if nil != err {
 		log.Print("Error retrieving data from FullContact")
 		log.Print(err)

@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/hjames9/prospects"
 	"log"
 	"net/http"
 )
@@ -32,7 +33,7 @@ func (validator NumVerifyValidator) Validate(prospect Prospect) (bool, bool, str
 	}
 
 	url := fmt.Sprintf(URL, validator.ApiKey, prospect.phoneNumber.String)
-	body, responseCode, err = MakeHttpGetRequest(url)
+	body, responseCode, _, err = common.MakeHttpGetRequest(url)
 	if nil != err {
 		return isValid, wasProcessed, miscellaneous
 	} else {

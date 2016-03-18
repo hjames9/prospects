@@ -180,7 +180,7 @@ func (prospect ProspectForm) Validate(errors binding.Errors, req *http.Request) 
 			errors = addError(errors, []string{"email"}, binding.TypeError, message)
 		}
 
-		if len(prospect.Miscellaneous) > 0 && !isJSON(prospect.Miscellaneous) {
+		if len(prospect.Miscellaneous) > 0 && !common.IsJSON(prospect.Miscellaneous) {
 			message := fmt.Sprintf("Invalid format specified for miscellaneous \"%s\"", prospect.Miscellaneous)
 			errors = addError(errors, []string{"miscellaneous"}, binding.TypeError, message)
 		}
@@ -192,7 +192,7 @@ func (prospect ProspectForm) Validate(errors binding.Errors, req *http.Request) 
 			if nil != err {
 				failed = true
 			} else {
-				age := getAge(dob)
+				age := common.GetAge(dob)
 				failed = age < 0 || age > 200
 			}
 
@@ -242,16 +242,6 @@ func addError(errors binding.Errors, fieldNames []string, classification string,
 		Message:        message,
 	})
 	return errors
-}
-
-func GetenvWithDefault(envKey string, defaultVal string) string {
-	envVal := os.Getenv(envKey)
-
-	if len(envVal) == 0 {
-		envVal = defaultVal
-	}
-
-	return envVal
 }
 
 func processIpAddressFromAddr(remoteAddr string) string {
@@ -307,16 +297,6 @@ func processIpAddress(req *http.Request) string {
 	}
 
 	return ipAddress
-}
-
-func isJSON(str string) bool {
-	var js map[string]interface{}
-	return json.Unmarshal([]byte(str), &js) == nil
-}
-
-func getAge(dob time.Time) int64 {
-	age := time.Now().Sub(dob).Seconds() / 31536000
-	return int64(age)
 }
 
 var lastValue, incrementBy int64 = -1, -1
@@ -464,10 +444,10 @@ func main() {
 	dbUser := os.Getenv("DB_USER")
 	dbPassword := os.Getenv("DB_PASSWORD")
 	dbName := os.Getenv("DB_NAME")
-	dbHost := GetenvWithDefault("DB_HOST", "localhost")
-	dbPort := GetenvWithDefault("DB_PORT", "5432")
-	dbMaxOpenConnsStr := GetenvWithDefault("DB_MAX_OPEN_CONNS", "10")
-	dbMaxIdleConnsStr := GetenvWithDefault("DB_MAX_IDLE_CONNS", "0")
+	dbHost := common.GetenvWithDefault("DB_HOST", "localhost")
+	dbPort := common.GetenvWithDefault("DB_PORT", "5432")
+	dbMaxOpenConnsStr := common.GetenvWithDefault("DB_MAX_OPEN_CONNS", "10")
+	dbMaxIdleConnsStr := common.GetenvWithDefault("DB_MAX_IDLE_CONNS", "0")
 
 	var err error
 
@@ -485,7 +465,7 @@ func main() {
 		log.Print(err)
 	}
 
-	dbCredentials := database.DatabaseCredentials{DB_DRIVER, dbUrl, dbUser, dbPassword, dbName, dbHost, dbPort, dbMaxOpenConns, dbMaxIdleConns}
+	dbCredentials := common.DatabaseCredentials{DB_DRIVER, dbUrl, dbUser, dbPassword, dbName, dbHost, dbPort, dbMaxOpenConns, dbMaxIdleConns}
 	if !dbCredentials.IsValid() {
 		log.Fatalf("Database credentials NOT set correctly. %#v", dbCredentials)
 	}
@@ -547,11 +527,11 @@ func main() {
 	}
 
 	//Robot detection field
-	botDetectionFieldLocationStr := GetenvWithDefault("BOTDETECT_FIELDLOCATION", "body")
-	botDetectionFieldName := GetenvWithDefault("BOTDETECT_FIELDNAME", "spambot")
-	botDetectionFieldValue := GetenvWithDefault("BOTDETECT_FIELDVALUE", "")
-	botDetectionMustMatchStr := GetenvWithDefault("BOTDETECT_MUSTMATCH", "true")
-	botDetectionPlayCoyStr := GetenvWithDefault("BOTDETECT_PLAYCOY", "true")
+	botDetectionFieldLocationStr := common.GetenvWithDefault("BOTDETECT_FIELDLOCATION", "body")
+	botDetectionFieldName := common.GetenvWithDefault("BOTDETECT_FIELDNAME", "spambot")
+	botDetectionFieldValue := common.GetenvWithDefault("BOTDETECT_FIELDVALUE", "")
+	botDetectionMustMatchStr := common.GetenvWithDefault("BOTDETECT_MUSTMATCH", "true")
+	botDetectionPlayCoyStr := common.GetenvWithDefault("BOTDETECT_PLAYCOY", "true")
 
 	var botDetectionFieldLocation RequestLocation
 
@@ -587,10 +567,10 @@ func main() {
 	log.Printf("Creating robot detection with %#v", botDetection)
 
 	//IP address location
-	ipAddressLocation = GetenvWithDefault("IP_ADDRESS_LOCATION", "normal")
+	ipAddressLocation = common.GetenvWithDefault("IP_ADDRESS_LOCATION", "normal")
 
 	//Asynchronous database writes
-	asyncRequest, err = strconv.ParseBool(GetenvWithDefault("ASYNC_REQUEST", "false"))
+	asyncRequest, err = strconv.ParseBool(common.GetenvWithDefault("ASYNC_REQUEST", "false"))
 	if nil != err {
 		asyncRequest = false
 		running = false
@@ -598,7 +578,7 @@ func main() {
 		log.Print(err)
 	}
 
-	asyncRequestSizeStr := GetenvWithDefault("ASYNC_REQUEST_SIZE", "100000")
+	asyncRequestSizeStr := common.GetenvWithDefault("ASYNC_REQUEST_SIZE", "100000")
 	asyncRequestSize, err := strconv.Atoi(asyncRequestSizeStr)
 	if nil != err {
 		asyncRequestSize = 100000
@@ -606,7 +586,7 @@ func main() {
 		log.Print(err)
 	}
 
-	asyncProcessIntervalStr := GetenvWithDefault("ASYNC_PROCESS_INTERVAL", "5")
+	asyncProcessIntervalStr := common.GetenvWithDefault("ASYNC_PROCESS_INTERVAL", "5")
 	asyncProcessInterval, err := strconv.Atoi(asyncProcessIntervalStr)
 	if nil != err {
 		asyncProcessInterval = 5
@@ -640,9 +620,9 @@ func main() {
 	createHandler, errorHandler, notFoundHandler := setupHttpHandlers(db)
 
 	//HTTP server
-	host := GetenvWithDefault("HOST", "")
-	port := GetenvWithDefault("PORT", "3000")
-	mode := GetenvWithDefault("MARTINI_ENV", "development")
+	host := common.GetenvWithDefault("HOST", "")
+	port := common.GetenvWithDefault("PORT", "3000")
+	mode := common.GetenvWithDefault("MARTINI_ENV", "development")
 
 	log.Printf("Running HTTP server on %s:%s in mode %s", host, port, mode)
 	runHttpServer(createHandler, errorHandler, notFoundHandler)
@@ -892,7 +872,7 @@ func runHttpServer(createHandler CreateHandler, errorHandler ErrorHandler, notFo
 		AllowCredentials: true,
 	}))
 
-	sslRedirect, err := strconv.ParseBool(GetenvWithDefault("SSL_REDIRECT", "false"))
+	sslRedirect, err := strconv.ParseBool(common.GetenvWithDefault("SSL_REDIRECT", "false"))
 	if nil != err {
 		sslRedirect = false
 		log.Print(err)

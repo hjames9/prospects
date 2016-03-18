@@ -27,5 +27,7 @@ _testmain.go
 *.swp
 prospects
 validator
+mailer
 cmd/prospects/prospects
 cmd/validator/validator
+cmd/mailer/mailer

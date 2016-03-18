@@ -36,6 +36,23 @@
 		{
 			"ImportPath": "github.com/martini-contrib/secure",
 			"Rev": "de8e19a0490b816696d093388d53f2e1f0c08b7d"
+		},
+		{
+			"ImportPath": "github.com/mxk/go-imap/imap",
+			"Rev": "531c36c3f12d6a03ea766b07a77314aa51ec17f3"
+		},
+		{
+			"ImportPath": "github.com/satori/go.uuid",
+			"Rev": "e673fdd4dea8a7334adbbe7f57b7e4b00bdc5502"
+		},
+		{
+			"ImportPath": "gopkg.in/alexcesaro/quotedprintable.v3",
+			"Rev": "2caba252f4dc53eaf6b553000885530023f54623"
+		},
+		{
+			"ImportPath": "gopkg.in/gomail.v2",
+			"Comment": "2.0.0-17-g060a5f4",
+			"Rev": "060a5f4e98dbf37408cf0c745681e4001d877827"
 		}
 	]
 }

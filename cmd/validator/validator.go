@@ -4,47 +4,16 @@ import (
 	"database/sql"
 	"github.com/hjames9/prospects"
 	_ "github.com/lib/pq"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
 	"strconv"
 )
 
 const (
 	GET_LEADS_QUERY   = "SELECT id, lead_source, email, phone_number, miscellaneous, was_processed, is_valid FROM prospects.leads WHERE was_processed = FALSE ORDER BY id ASC LIMIT $1"
-	UPDATE_LEAD_QUERY = "UPDATE prospects.leads SET was_processed = $1, is_valid = $2, miscellaneous = $3 WHERE id = $4"
+	UPDATE_LEAD_QUERY = "UPDATE prospects.leads SET was_processed = $1, is_valid = $2, miscellaneous = miscellaneous || $3 WHERE id = $4"
 	DB_DRIVER         = "postgres"
-	USER_AGENT_HEADER = "User-Agent"
-	USER_AGENT        = "Prospects validator"
 )
-
-func MakeHttpGetRequest(url string) ([]byte, int, error) {
-	//Create HTTP client
-	client := http.Client{}
-
-	//Create request with headers
-	request, err := http.NewRequest("GET", url, nil)
-	request.Header.Add(USER_AGENT_HEADER, USER_AGENT)
-	if nil != err {
-		return nil, 0, err
-	}
-
-	//Execute request
-	response, err := client.Do(request)
-	if nil != err {
-		return nil, 0, err
-	}
-
-	//Get response body
-	body, err := ioutil.ReadAll(response.Body)
-	response.Body.Close()
-	if nil != err {
-		return nil, 0, err
-	}
-
-	return body, response.StatusCode, nil
-}
 
 type Validator interface {
 	Validate(Prospect) (bool, bool, string)
@@ -91,16 +60,6 @@ func (prospect *Prospect) IsProcessed() bool {
 	return prospect.wasProcessed
 }
 
-func GetenvWithDefault(envKey string, defaultVal string) string {
-	envVal := os.Getenv(envKey)
-
-	if len(envVal) == 0 {
-		envVal = defaultVal
-	}
-
-	return envVal
-}
-
 func process(db *sql.DB, prospects []Prospect) {
 	transaction, err := db.Begin()
 	if nil != err {
@@ -140,11 +99,11 @@ func main() {
 	dbUser := os.Getenv("DB_USER")
 	dbPassword := os.Getenv("DB_PASSWORD")
 	dbName := os.Getenv("DB_NAME")
-	dbHost := GetenvWithDefault("DB_HOST", "localhost")
-	dbPort := GetenvWithDefault("DB_PORT", "5432")
-	dbMaxOpenConnsStr := GetenvWithDefault("DB_MAX_OPEN_CONNS", "10")
-	dbMaxIdleConnsStr := GetenvWithDefault("DB_MAX_IDLE_CONNS", "0")
-	processAmtStr := GetenvWithDefault("PROCESS_AMT", "3")
+	dbHost := common.GetenvWithDefault("DB_HOST", "localhost")
+	dbPort := common.GetenvWithDefault("DB_PORT", "5432")
+	dbMaxOpenConnsStr := common.GetenvWithDefault("DB_MAX_OPEN_CONNS", "10")
+	dbMaxIdleConnsStr := common.GetenvWithDefault("DB_MAX_IDLE_CONNS", "0")
+	processAmtStr := common.GetenvWithDefault("PROCESS_AMT", "3")
 	fullContactApiKey := os.Getenv("FULLCONTACT_APIKEY")
 	numVerifyApiKey := os.Getenv("NUMVERIFY_APIKEY")
 
@@ -180,7 +139,7 @@ func main() {
 	//Database connection
 	log.Print("Enabling database connectivity")
 
-	dbCredentials := database.DatabaseCredentials{DB_DRIVER, dbUrl, dbUser, dbPassword, dbName, dbHost, dbPort, dbMaxOpenConns, dbMaxIdleConns}
+	dbCredentials := common.DatabaseCredentials{DB_DRIVER, dbUrl, dbUser, dbPassword, dbName, dbHost, dbPort, dbMaxOpenConns, dbMaxIdleConns}
 	if !dbCredentials.IsValid() {
 		log.Fatalf("Database credentials NOT set correctly. %#v", dbCredentials)
 	}
