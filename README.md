@@ -1,7 +1,9 @@
-# prospects
-A Go-based http server to collect potential prospects and persist them to a Postgresql database
+# Prospects:  Toolkit for collecting sales prospects
+A Go-based http server and e-mail processor to collect potential prospects and persist them to a Postgresql database.  Also provides validation of collected data.
 
-## Setup - Set environmental variables
+## prospects - http server
+
+### Setup - Set environmental variables
     DATABASE_URL=postgres://user:password@localhost:5432/prospect_db (no default)
     DB_USER=hjames (no default, ignored with DATABASE_URL set)
     DB_PASSWORD=blahblah (no default, ignored with DATABASE_URL set)
@@ -26,3 +28,40 @@ A Go-based http server to collect potential prospects and persist them to a Post
     ASYNC_REQUEST_SIZE=100000 (default is 100000)
     ASYNC_PROCESS_INTERVAL=10 (default is 5 seconds)
     IP_ADDRESS_LOCATION=xff_first (default is normal, can be normal, xff_first, xff_last)
+
+## mailer - e-mail data processor
+
+### Setup - Set environmental variables
+    DATABASE_URL=postgres://user:password@localhost:5432/prospect_db (no default)
+    DB_USER=hjames (no default, ignored with DATABASE_URL set)
+    DB_PASSWORD=blahblah (no default, ignored with DATABASE_URL set)
+    DB_NAME=prospect_db (no default, ignored with DATABASE_URL set)
+    DB_HOST=localhost (default is localhost, ignored with DATABASE_URL set)
+    DB_PORT=5432 (default is 5432, ignored with DATABASE_URL set)
+    DB_MAX_OPEN_CONNS=100 (default is 10)
+    DB_MAX_IDLE_CONNS=100 (default is 0)
+    APPLICATION_NAMES=info@best_products.com:radio (no default)
+    IMAPS_HOST=imap.gmail.com:993 (no default)
+    IMAPS_USER=info@best_products.com (no default)
+    IMAPS_PASSWORD=blahblah (no default)
+    SMTP_HOST=smtp.gmail.com:587 (no default)
+    SMTP_USER=info@best_products.com (no default)
+    SMTP_PASSWORD=blahblah (no default)
+    SMTP_REPLY_TEMPLATE_URL=http://dev.best_products.com/email.html (no default)
+    SMTP_REPLY_SUBJECT=Thank you your interest! (no default)
+
+## validator - data validation
+
+### Setup - Set environmental variables
+    DATABASE_URL=postgres://user:password@localhost:5432/prospect_db (no default)
+    DB_USER=hjames (no default, ignored with DATABASE_URL set)
+    DB_PASSWORD=blahblah (no default, ignored with DATABASE_URL set)
+    DB_NAME=prospect_db (no default, ignored with DATABASE_URL set)
+    DB_HOST=localhost (default is localhost, ignored with DATABASE_URL set)
+    DB_PORT=5432 (default is 5432, ignored with DATABASE_URL set)
+    DB_MAX_OPEN_CONNS=100 (default is 10)
+    DB_MAX_IDLE_CONNS=100 (default is 0)
+    PROCESS_AMT=3 (default is 3)
+    FULLCONTACT_APIKEY=0d9817d9-b9bd-4e15-871b-a2a3a1101ab5 (no default)
+    NUMVERIFY_APIKEY=d7f10b5a-e34d-4c75-8345-425691939c36 (no default)
+
