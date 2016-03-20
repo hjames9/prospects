@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"github.com/hjames9/prospects"
 	_ "github.com/lib/pq"
 	"github.com/mxk/go-imap/imap"
@@ -21,9 +20,11 @@ import (
 )
 
 const (
-	QUERY       = "INSERT INTO prospects.leads(lead_id, app_name, lead_source, email, miscellaneous, created_at) VALUES($1, $2, $3, $4, $5, $6) RETURNING id;"
-	DB_DRIVER   = "postgres"
-	EMAIL_REGEX = "[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+"
+	QUERY           = "INSERT INTO prospects.leads(lead_id, app_name, lead_source, email, user_agent, miscellaneous, created_at) VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING id;"
+	GET_IMAP_MARKER = "SELECT last_value FROM prospects.imap_marker"
+	SET_IMAP_MARKER = "SELECT setval('prospects.imap_marker', $1)"
+	DB_DRIVER       = "postgres"
+	EMAIL_REGEX     = "[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+"
 )
 
 type Prospect struct {
@@ -31,10 +32,23 @@ type Prospect struct {
 	AppName       string
 	LeadSource    string
 	Email         string
+	UserAgent     sql.NullString
 	Miscellaneous sql.NullString
 }
 
-func getLatestMessages(imapServer string, username string, password string, appNames map[string]string) ([]Prospect, error) {
+func getImapMarker(db *sql.DB) (int64, error) {
+	var imapMarker int64
+	err := db.QueryRow(GET_IMAP_MARKER).Scan(&imapMarker)
+	return imapMarker, err
+}
+
+func setImapMarker(db *sql.DB, marker int64) (int64, error) {
+	var imapMarker int64
+	err := db.QueryRow(SET_IMAP_MARKER, marker).Scan(&imapMarker)
+	return imapMarker, err
+}
+
+func getLatestMessages(imapServer string, username string, password string, appNames map[string]string, db *sql.DB) ([]Prospect, error) {
 	//Connect to imap server
 	imapClient, err := imap.DialTLS(imapServer, nil)
 	if nil != err {
@@ -42,15 +56,13 @@ func getLatestMessages(imapServer string, username string, password string, appN
 	}
 	defer imapClient.Logout(30 * time.Second)
 
-	fmt.Println("Server says hello:", imapClient.Data[0].Info)
+	log.Println("Server says hello:", imapClient.Data[0].Info)
 	imapClient.Data = nil
 
 	//Start TLS
 	if imapClient.Caps["STARTTLS"] {
 		_, err := imapClient.StartTLS(nil)
 		if nil != err {
-			log.Println("StartTLS failed")
-			log.Print(err)
 			return nil, err
 		}
 	}
@@ -60,7 +72,6 @@ func getLatestMessages(imapServer string, username string, password string, appN
 		_, err := imapClient.Login(username, password)
 		if nil != err {
 			log.Print("Login not successful")
-			log.Print(err)
 			return nil, err
 		} else {
 			log.Print("Login successful")
@@ -74,14 +85,14 @@ func getLatestMessages(imapServer string, username string, password string, appN
 	cmd, _ := imap.Wait(imapClient.List("", "%"))
 
 	// Print mailbox information
-	fmt.Println("\nTop-level mailboxes:")
+	log.Println("\nTop-level mailboxes:")
 	for _, rsp := range cmd.Data {
-		fmt.Println("|--", rsp.MailboxInfo())
+		log.Println("|--", rsp.MailboxInfo())
 	}
 
 	// Check for new unilateral server data responses
 	for _, rsp := range imapClient.Data {
-		fmt.Println("Server data:", rsp)
+		log.Println("Server data:", rsp)
 	}
 	imapClient.Data = nil
 
@@ -89,35 +100,45 @@ func getLatestMessages(imapServer string, username string, password string, appN
 	log.Print("Compiling e-mail regular expression")
 	emailRegex, err := regexp.Compile(EMAIL_REGEX)
 	if nil != err {
-		log.Print(err)
-		log.Fatalf("E-mail regex compilation failed for %s", EMAIL_REGEX)
+		return nil, err
 	}
 
 	//Open mailbox
 	imapClient.Select("INBOX", true)
-	fmt.Print("Mailbox: status\n", imapClient.Mailbox)
-
-	//Fetch messages headers
-	set, _ := imap.NewSeqSet("")
-	if imapClient.Mailbox.Messages >= 10 {
-		set.AddRange(imapClient.Mailbox.Messages-1, imapClient.Mailbox.Messages)
-	} else {
-		set.Add("1:*")
-	}
+	log.Print("Mailbox: status\n", imapClient.Mailbox)
 
 	//Prospects array
 	var prospects []Prospect
 
-	cmd, _ = imapClient.Fetch(set, "RFC822.HEADER")
+	//Fetch messages
+	set, _ := imap.NewSeqSet("")
+	latestImapMarket, err := getImapMarker(db)
+	if nil != err {
+		return nil, err
+	}
+
+	if int64(imapClient.Mailbox.Messages) == latestImapMarket {
+		log.Print("No new messages")
+		return prospects, nil
+	} else {
+		set.AddRange(uint32(latestImapMarket), imapClient.Mailbox.Messages)
+	}
+
+	orderIds := make(map[int64]bool)
+	cmd, _ = imapClient.Fetch(set, "RFC822")
 	for cmd.InProgress() {
 		imapClient.Recv(-1)
 
 		for _, rsp := range cmd.Data {
-			header := imap.AsBytes(rsp.MessageInfo().Attrs["RFC822.HEADER"])
-			if msg, _ := mail.ReadMessage(bytes.NewReader(header)); nil != msg {
-				fmt.Println("|--", msg.Header.Get("Subject"))
-				fmt.Println("|--", msg.Header.Get("From"))
-				fmt.Println("|--", msg.Header.Get("To"))
+			if !orderIds[rsp.Order] {
+				orderIds[rsp.Order] = true
+			} else {
+				continue
+			}
+
+			msgBytes := imap.AsBytes(rsp.MessageInfo().Attrs["RFC822"])
+			if msg, _ := mail.ReadMessage(bytes.NewReader(msgBytes)); nil != msg {
+				uA := msg.Header.Get("User-Agent")
 				from := msg.Header.Get("From")
 				to := msg.Header.Get("To")
 
@@ -126,34 +147,46 @@ func getLatestMessages(imapServer string, username string, password string, appN
 
 				leadId := uuid.NewV3(uuid.Nil, fromEmail)
 				appName := appNames[toEmail]
-				misc, _ := json.Marshal(msg.Header)
+
+				userAgent := sql.NullString{"", false}
+				if len(uA) > 0 {
+					userAgent.String = uA
+					userAgent.Valid = true
+				}
+
+				misc, _ := json.Marshal(msg)
 				miscellaneous := sql.NullString{"[" + string(misc) + "]", true}
-				prospects = append(prospects, Prospect{leadId, appName, "email", fromEmail, miscellaneous})
-				//fmt.Println("|--", msg.Header)
-				/*
-					                body := make([]byte, 20480)
-									size, _ := msg.Body.Read(body)
-									fmt.Printf("Read %d bytes for Message: %s\n", size, string(body))
-				*/
+				prospects = append(prospects, Prospect{leadId, appName, "email", fromEmail, userAgent, miscellaneous})
+				body := make([]byte, 20480)
+				size, _ := msg.Body.Read(body)
+				log.Printf("Read %d bytes\n", size)
 			}
 		}
 	}
-
 	cmd.Data = nil
+
+	//Set IMAP marker
+	_, err = setImapMarker(db, int64(imapClient.Mailbox.Messages))
 
 	//Process unilateral server data
 	for _, rsp := range imapClient.Data {
-		fmt.Println("Server data:", rsp)
+		log.Println("Server data:", rsp)
 	}
 	imapClient.Data = nil
+
+	//Check command completion status
+	if rsp, err := cmd.Result(imap.OK); err != nil {
+		if err == imap.ErrAborted {
+			log.Println("Fetch command aborted")
+		} else {
+			log.Println("Fetch error:", rsp.Info)
+		}
+	}
 
 	return prospects, nil
 }
 
-func addNewProspects(prospects []Prospect, dbCredentials common.DatabaseCredentials) error {
-	db := dbCredentials.GetDatabase()
-	defer db.Close()
-
+func addNewProspects(prospects []Prospect, db *sql.DB) error {
 	transaction, err := db.Begin()
 	if nil != err {
 		log.Print("Error creating transaction")
@@ -171,7 +204,7 @@ func addNewProspects(prospects []Prospect, dbCredentials common.DatabaseCredenti
 	counter := 0
 	unused := -1
 	for _, prospect := range prospects {
-		err = statement.QueryRow(prospect.LeadId.String(), prospect.AppName, prospect.LeadSource, prospect.Email, prospect.Miscellaneous, time.Now()).Scan(&unused)
+		err = statement.QueryRow(prospect.LeadId.String(), prospect.AppName, prospect.LeadSource, prospect.Email, prospect.UserAgent, prospect.Miscellaneous, time.Now()).Scan(&unused)
 		counter++
 	}
 
@@ -329,16 +362,21 @@ func main() {
 	if !dbCredentials.IsValid() {
 		log.Fatalf("Database credentials NOT set correctly. %#v", dbCredentials)
 	}
+	db := dbCredentials.GetDatabase()
+	defer db.Close()
 
 	//Get latest e-mail messages
 	log.Print("Fetching latest e-mail messages")
-	prospects, err := getLatestMessages(imapsHost, imapsUser, imapsPassword, appNames)
+	prospects, err := getLatestMessages(imapsHost, imapsUser, imapsPassword, appNames, db)
 	if nil != err {
 		log.Fatal(err)
 	}
 
 	//Add prospects from e-mail messages
-	addNewProspects(prospects, dbCredentials)
+	err = addNewProspects(prospects, db)
+	if nil != err {
+		log.Fatal(err)
+	}
 
 	//Send thank you reply
 	err = sendEmailReply(smtpHost, smtpUser, smtpPassword, smtpReplyTemplateUrl, smtpReplySubject, prospects)

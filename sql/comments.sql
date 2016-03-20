@@ -67,3 +67,5 @@ COMMENT ON INDEX l_app_name_idx IS 'Index for application name.  This helps for 
 COMMENT ON INDEX l_email_idx IS 'Index for lead e-mail addresses.  This helps querying all data points for a particular e-mail address';
 COMMENT ON INDEX l_referrer_idx IS 'Index for page referrers. This helps querying all data points for the web pages that referred us to a particular landing page containing the interacting form.';
 COMMENT ON INDEX l_misc_idx IS 'Index for miscellaneous jsonb field.  This will allow for any future potential data we want to add that isn''t currently modeled but yet we would want to search for.';
+
+COMMENT ON SEQUENCE imap_marker IS 'Sequence used to track prospects received via e-mail';

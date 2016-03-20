@@ -73,3 +73,5 @@ CREATE INDEX l_email_idx ON leads(email);
 CREATE INDEX l_referrer_idx ON leads(page_referrer);
 
 CREATE INDEX l_misc_idx ON leads USING GIN(miscellaneous);
+
+CREATE SEQUENCE imap_marker START WITH 1 INCREMENT BY 1;
