@@ -42,7 +42,7 @@ func getImapMarker(db *sql.DB, appName string) (int64, error) {
 	return imapMarker, err
 }
 
-func getLatestMessages(imapServer string, username string, password string, appName string, db *sql.DB) ([]Prospect, error) {
+func getLatestMessages(imapServer string, username string, password string, mailbox string, appName string, db *sql.DB) ([]Prospect, error) {
 	//Connect to imap server
 	imapClient, err := imap.DialTLS(imapServer, nil)
 	if nil != err {
@@ -98,7 +98,7 @@ func getLatestMessages(imapServer string, username string, password string, appN
 	}
 
 	//Open mailbox
-	imapClient.Select("INBOX", true)
+	imapClient.Select(mailbox, true)
 	log.Print("Mailbox: status\n", imapClient.Mailbox)
 
 	//Prospects array
@@ -295,6 +295,7 @@ func main() {
 	imapsHost := os.Getenv("IMAPS_HOST")
 	imapsUser := os.Getenv("IMAPS_USER")
 	imapsPassword := os.Getenv("IMAPS_PASSWORD")
+	imapsMailbox := common.GetenvWithDefault("IMAPS_MAILBOX", "INBOX")
 
 	if len(imapsHost) <= 0 {
 		log.Fatal("IMAPS_HOST is NOT set")
@@ -375,7 +376,7 @@ func main() {
 
 	//Get latest e-mail messages
 	log.Print("Fetching latest e-mail messages")
-	prospects, err := getLatestMessages(imapsHost, imapsUser, imapsPassword, appName, db)
+	prospects, err := getLatestMessages(imapsHost, imapsUser, imapsPassword, imapsMailbox, appName, db)
 	if nil != err {
 		log.Fatal(err)
 	}

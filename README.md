@@ -44,6 +44,7 @@ A Go-based http server and e-mail processor to collect potential prospects and p
     IMAPS_HOST=imap.gmail.com:993 (no default)
     IMAPS_USER=info@best_products.com (no default)
     IMAPS_PASSWORD=blahblah (no default)
+    IMAPS_MAILBOX=SPECIAL (default is "INBOX")
     SMTP_HOST=smtp.gmail.com:587 (no default)
     SMTP_USER=info@best_products.com (no default)
     SMTP_PASSWORD=blahblah (no default)

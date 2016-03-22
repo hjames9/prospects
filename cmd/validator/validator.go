@@ -81,6 +81,9 @@ func process(db *sql.DB, prospects []Prospect) {
 	for _, prospect := range prospects {
 		if prospect.IsProcessed() {
 			err = statement.QueryRow(prospect.wasProcessed, prospect.isValid, prospect.miscellaneous, prospect.id).Scan(&unused)
+			if nil != err {
+				log.Print(err)
+			}
 			counter++
 		}
 	}
