@@ -143,6 +143,11 @@ func getLatestMessages(imapServer string, username string, password string, appN
 				from := msg.Header.Get("From")
 
 				fromEmail := emailRegex.FindString(from)
+				if fromEmail == "" {
+					log.Printf("Didn't find e-mail address in %s", from)
+					continue
+				}
+
 				leadId := uuid.NewV3(uuid.Nil, fromEmail)
 
 				userAgent := sql.NullString{"", false}
@@ -151,8 +156,15 @@ func getLatestMessages(imapServer string, username string, password string, appN
 					userAgent.Valid = true
 				}
 
-				misc, _ := json.Marshal(msg)
-				miscellaneous := sql.NullString{"[" + string(misc) + "]", true}
+				miscellaneous := sql.NullString{"", false}
+				misc, err := json.Marshal(msg)
+				if nil != err {
+					log.Print(err)
+				} else {
+					miscellaneous.String = "[" + string(misc) + "]"
+					miscellaneous.Valid = true
+				}
+
 				prospects = append(prospects, Prospect{leadId, appName, "email", fromEmail, userAgent, miscellaneous})
 				body := make([]byte, 20480)
 				size, _ := msg.Body.Read(body)
