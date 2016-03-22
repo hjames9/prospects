@@ -211,6 +211,9 @@ func addNewProspects(prospects []Prospect, appName string, db *sql.DB) error {
 	unused := -1
 	for _, prospect := range prospects {
 		err = statement.QueryRow(prospect.LeadId.String(), prospect.AppName, prospect.LeadSource, prospect.Email, prospect.UserAgent, prospect.Miscellaneous, time.Now()).Scan(&unused)
+		if nil != err {
+			log.Print(err)
+		}
 		counter++
 	}
 
