@@ -20,11 +20,14 @@ import (
 )
 
 const (
-	QUERY           = "INSERT INTO prospects.leads(lead_id, app_name, lead_source, email, user_agent, miscellaneous, created_at) VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING id;"
-	GET_IMAP_MARKER = "SELECT marker FROM prospects.imap_markers WHERE app_name = $1"
-	SET_IMAP_MARKER = "INSERT INTO prospects.imap_markers (app_name, marker, updated_at) VALUES($1, $2, $3) ON CONFLICT (app_name) DO UPDATE SET marker = prospects.imap_markers.marker + $2, updated_at = $3"
-	DB_DRIVER       = "postgres"
-	EMAIL_REGEX     = "[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+"
+	QUERY             = "INSERT INTO prospects.leads(lead_id, app_name, lead_source, email, user_agent, miscellaneous, created_at) VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING id;"
+	GET_IMAP_MARKER   = "SELECT marker FROM prospects.imap_markers WHERE app_name = $1"
+	SET_IMAP_MARKER   = "INSERT INTO prospects.imap_markers (app_name, marker, updated_at) VALUES($1, $2, $3) ON CONFLICT (app_name) DO UPDATE SET marker = prospects.imap_markers.marker + $2, updated_at = $3"
+	DB_DRIVER         = "postgres"
+	EMAIL_REGEX       = "[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+"
+	FROM_HEADER       = "From"
+	USER_AGENT_HEADER = "User-Agent"
+	RFC822            = "RFC822"
 )
 
 type Prospect struct {
@@ -75,16 +78,19 @@ func getLatestMessages(imapServer string, username string, password string, mail
 		return nil, err
 	}
 
-	// List all top-level mailboxes, wait for the command to finish
-	cmd, _ := imap.Wait(imapClient.List("", "%"))
+	//List all top-level mailboxes, wait for the command to finish
+	cmd, err := imap.Wait(imapClient.List("", "%"))
+	if nil != err {
+		return nil, err
+	}
 
-	// Print mailbox information
+	//Print mailbox information
 	log.Println("\nTop-level mailboxes:")
 	for _, rsp := range cmd.Data {
 		log.Println("|--", rsp.MailboxInfo())
 	}
 
-	// Check for new unilateral server data responses
+	//Check for new unilateral server data responses
 	for _, rsp := range imapClient.Data {
 		log.Println("Server data:", rsp)
 	}
@@ -98,14 +104,21 @@ func getLatestMessages(imapServer string, username string, password string, mail
 	}
 
 	//Open mailbox
-	imapClient.Select(mailbox, true)
+	_, err = imapClient.Select(mailbox, true)
+	if nil != err {
+		return nil, err
+	}
 	log.Print("Mailbox: status\n", imapClient.Mailbox)
 
 	//Prospects array
 	var prospects []Prospect
 
 	//Fetch messages
-	set, _ := imap.NewSeqSet("")
+	set, err := imap.NewSeqSet("")
+	if nil != err {
+		return nil, err
+	}
+
 	latestImapMarket, err := getImapMarker(db, appName)
 	if nil != err && err != sql.ErrNoRows {
 		return nil, err
@@ -126,9 +139,16 @@ func getLatestMessages(imapServer string, username string, password string, mail
 	}
 
 	orderIds := make(map[int64]bool)
-	cmd, _ = imapClient.Fetch(set, "RFC822")
+	cmd, err = imapClient.Fetch(set, RFC822)
+	if nil != err {
+		return nil, err
+	}
+
 	for cmd.InProgress() {
-		imapClient.Recv(-1)
+		err = imapClient.Recv(-1)
+		if nil != err {
+			return nil, err
+		}
 
 		for _, rsp := range cmd.Data {
 			if !orderIds[rsp.Order] {
@@ -137,10 +157,10 @@ func getLatestMessages(imapServer string, username string, password string, mail
 				continue
 			}
 
-			msgBytes := imap.AsBytes(rsp.MessageInfo().Attrs["RFC822"])
-			if msg, _ := mail.ReadMessage(bytes.NewReader(msgBytes)); nil != msg {
-				uA := msg.Header.Get("User-Agent")
-				from := msg.Header.Get("From")
+			msgBytes := imap.AsBytes(rsp.MessageInfo().Attrs[RFC822])
+			if msg, err := mail.ReadMessage(bytes.NewReader(msgBytes)); nil != msg {
+				uA := msg.Header.Get(USER_AGENT_HEADER)
+				from := msg.Header.Get(FROM_HEADER)
 
 				fromEmail := emailRegex.FindString(from)
 				if fromEmail == "" {
@@ -166,9 +186,17 @@ func getLatestMessages(imapServer string, username string, password string, mail
 				}
 
 				prospects = append(prospects, Prospect{leadId, appName, "email", fromEmail, userAgent, miscellaneous})
-				body := make([]byte, 20480)
-				size, _ := msg.Body.Read(body)
-				log.Printf("Read %d bytes\n", size)
+				body := make([]byte, 1020400)
+				size, err := msg.Body.Read(body)
+				if nil != err {
+					log.Print("Error reading body of e-mail")
+					log.Print(err)
+				} else {
+					log.Printf("Read %d bytes\n", size)
+				}
+			} else {
+				log.Print("Error reading message")
+				log.Print(err)
 			}
 		}
 	}
@@ -186,6 +214,7 @@ func getLatestMessages(imapServer string, username string, password string, mail
 			log.Println("Fetch command aborted")
 		} else {
 			log.Println("Fetch error:", rsp.Info)
+			log.Print(err)
 		}
 	}
 
