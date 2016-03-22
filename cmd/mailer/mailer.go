@@ -244,6 +244,12 @@ func sendEmailReply(smtpServer string, smtpUser string, smtpPassword string, smt
 
 		smtpClient := gomail.NewDialer(smtpServer, smtpPort, smtpUser, smtpPassword)
 
+		sender, err := smtpClient.Dial()
+		if nil != err {
+			return err
+		}
+		defer sender.Close()
+
 		for _, prospect := range prospects {
 			message := gomail.NewMessage()
 			message.SetHeader("From", smtpUser)
@@ -251,8 +257,9 @@ func sendEmailReply(smtpServer string, smtpUser string, smtpPassword string, smt
 			message.SetHeader("Subject", smtpReplySubject)
 			message.SetBody("text/html", string(smtpReplyTemplate))
 
-			if err := smtpClient.DialAndSend(message); nil != err {
-				return err
+			err = sender.Send(smtpUser, []string{prospect.Email}, message)
+			if nil != err {
+				log.Print(err)
 			}
 		}
 	}
