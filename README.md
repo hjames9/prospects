@@ -40,7 +40,7 @@ A Go-based http server and e-mail processor to collect potential prospects and p
     DB_PORT=5432 (default is 5432, ignored with DATABASE_URL set)
     DB_MAX_OPEN_CONNS=100 (default is 10)
     DB_MAX_IDLE_CONNS=100 (default is 0)
-    APPLICATION_NAMES=info@best_products.com:radio (no default)
+    APPLICATION_NAME=tremont (no default)
     IMAPS_HOST=imap.gmail.com:993 (no default)
     IMAPS_USER=info@best_products.com (no default)
     IMAPS_PASSWORD=blahblah (no default)

@@ -21,8 +21,8 @@ import (
 
 const (
 	QUERY           = "INSERT INTO prospects.leads(lead_id, app_name, lead_source, email, user_agent, miscellaneous, created_at) VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING id;"
-	GET_IMAP_MARKER = "SELECT last_value FROM prospects.imap_marker"
-	SET_IMAP_MARKER = "SELECT setval('prospects.imap_marker', $1)"
+	GET_IMAP_MARKER = "SELECT marker FROM prospects.imap_markers WHERE app_name = $1"
+	SET_IMAP_MARKER = "INSERT INTO prospects.imap_markers (app_name, marker, updated_at) VALUES($1, $2, $3) ON CONFLICT (app_name) DO UPDATE SET marker = prospects.imap_markers.marker + $2, updated_at = $3"
 	DB_DRIVER       = "postgres"
 	EMAIL_REGEX     = "[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+"
 )
@@ -36,19 +36,13 @@ type Prospect struct {
 	Miscellaneous sql.NullString
 }
 
-func getImapMarker(db *sql.DB) (int64, error) {
+func getImapMarker(db *sql.DB, appName string) (int64, error) {
 	var imapMarker int64
-	err := db.QueryRow(GET_IMAP_MARKER).Scan(&imapMarker)
+	err := db.QueryRow(GET_IMAP_MARKER, appName).Scan(&imapMarker)
 	return imapMarker, err
 }
 
-func setImapMarker(db *sql.DB, marker int64) (int64, error) {
-	var imapMarker int64
-	err := db.QueryRow(SET_IMAP_MARKER, marker).Scan(&imapMarker)
-	return imapMarker, err
-}
-
-func getLatestMessages(imapServer string, username string, password string, appNames map[string]string, db *sql.DB) ([]Prospect, error) {
+func getLatestMessages(imapServer string, username string, password string, appName string, db *sql.DB) ([]Prospect, error) {
 	//Connect to imap server
 	imapClient, err := imap.DialTLS(imapServer, nil)
 	if nil != err {
@@ -112,16 +106,23 @@ func getLatestMessages(imapServer string, username string, password string, appN
 
 	//Fetch messages
 	set, _ := imap.NewSeqSet("")
-	latestImapMarket, err := getImapMarker(db)
-	if nil != err {
+	latestImapMarket, err := getImapMarker(db, appName)
+	if nil != err && err != sql.ErrNoRows {
 		return nil, err
+	} else if err == sql.ErrNoRows {
+		latestImapMarket = 0
 	}
 
 	if int64(imapClient.Mailbox.Messages) == latestImapMarket {
 		log.Print("No new messages")
 		return prospects, nil
+	} else if latestImapMarket+1 == int64(imapClient.Mailbox.Messages) {
+		set.AddNum(imapClient.Mailbox.Messages)
+		log.Printf("Processing message %d", imapClient.Mailbox.Messages)
 	} else {
+		latestImapMarket += 1
 		set.AddRange(uint32(latestImapMarket), imapClient.Mailbox.Messages)
+		log.Printf("Processing messages %d to %d", latestImapMarket, imapClient.Mailbox.Messages)
 	}
 
 	orderIds := make(map[int64]bool)
@@ -140,13 +141,9 @@ func getLatestMessages(imapServer string, username string, password string, appN
 			if msg, _ := mail.ReadMessage(bytes.NewReader(msgBytes)); nil != msg {
 				uA := msg.Header.Get("User-Agent")
 				from := msg.Header.Get("From")
-				to := msg.Header.Get("To")
 
 				fromEmail := emailRegex.FindString(from)
-				toEmail := emailRegex.FindString(to)
-
 				leadId := uuid.NewV3(uuid.Nil, fromEmail)
-				appName := appNames[toEmail]
 
 				userAgent := sql.NullString{"", false}
 				if len(uA) > 0 {
@@ -164,9 +161,6 @@ func getLatestMessages(imapServer string, username string, password string, appN
 		}
 	}
 	cmd.Data = nil
-
-	//Set IMAP marker
-	_, err = setImapMarker(db, int64(imapClient.Mailbox.Messages))
 
 	//Process unilateral server data
 	for _, rsp := range imapClient.Data {
@@ -186,7 +180,7 @@ func getLatestMessages(imapServer string, username string, password string, appN
 	return prospects, nil
 }
 
-func addNewProspects(prospects []Prospect, db *sql.DB) error {
+func addNewProspects(prospects []Prospect, appName string, db *sql.DB) error {
 	transaction, err := db.Begin()
 	if nil != err {
 		log.Print("Error creating transaction")
@@ -206,6 +200,14 @@ func addNewProspects(prospects []Prospect, db *sql.DB) error {
 	for _, prospect := range prospects {
 		err = statement.QueryRow(prospect.LeadId.String(), prospect.AppName, prospect.LeadSource, prospect.Email, prospect.UserAgent, prospect.Miscellaneous, time.Now()).Scan(&unused)
 		counter++
+	}
+
+	//Set IMAP marker
+	if counter > 0 {
+		_, err = transaction.Exec(SET_IMAP_MARKER, appName, counter, time.Now())
+		if nil != err {
+			log.Print(err)
+		}
 	}
 
 	err = transaction.Commit()
@@ -259,28 +261,12 @@ func sendEmailReply(smtpServer string, smtpUser string, smtpPassword string, smt
 }
 
 func main() {
-	//Get app names
-	//e.g. APPLICATION_NAMES=info@dipset.com:dipset,info@gunit.com:gunit
-	appNames := make(map[string]string)
-	appNamesStr := os.Getenv("APPLICATION_NAMES")
-	if len(appNamesStr) > 0 {
-		appNamesArr := strings.Split(appNamesStr, ",")
-		for _, appName := range appNamesArr {
-			appNamePair := strings.Split(appName, ":")
-			if len(appNamePair) != 2 {
-				log.Printf("Invalid application name mapping skipped: %s", appNamePair)
-				continue
-			}
-			appNames[appNamePair[0]] = appNamePair[1]
-		}
-
-		if len(appNames) > 0 {
-			log.Printf("Application name mappings: %s", appNames)
-		} else {
-			log.Fatal("No application name mappings set")
-		}
+	//Get application name
+	appName := os.Getenv("APPLICATION_NAME")
+	if len(appName) > 0 {
+		log.Printf("Application name: %s", appName)
 	} else {
-		log.Fatal("APPLICATION_NAMES variable NOT set")
+		log.Fatal("APPLICATION_NAME variable NOT set")
 	}
 
 	//IMAPS server connection
@@ -367,13 +353,13 @@ func main() {
 
 	//Get latest e-mail messages
 	log.Print("Fetching latest e-mail messages")
-	prospects, err := getLatestMessages(imapsHost, imapsUser, imapsPassword, appNames, db)
+	prospects, err := getLatestMessages(imapsHost, imapsUser, imapsPassword, appName, db)
 	if nil != err {
 		log.Fatal(err)
 	}
 
 	//Add prospects from e-mail messages
-	err = addNewProspects(prospects, db)
+	err = addNewProspects(prospects, appName, db)
 	if nil != err {
 		log.Fatal(err)
 	}

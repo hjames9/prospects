@@ -68,4 +68,9 @@ COMMENT ON INDEX l_email_idx IS 'Index for lead e-mail addresses.  This helps qu
 COMMENT ON INDEX l_referrer_idx IS 'Index for page referrers. This helps querying all data points for the web pages that referred us to a particular landing page containing the interacting form.';
 COMMENT ON INDEX l_misc_idx IS 'Index for miscellaneous jsonb field.  This will allow for any future potential data we want to add that isn''t currently modeled but yet we would want to search for.';
 
-COMMENT ON SEQUENCE imap_marker IS 'Sequence used to track prospects received via e-mail';
+COMMENT ON TABLE imap_markers IS 'Table is used to track prospects received via e-mail';
+COMMENT ON COLUMN imap_markers.app_name IS 'Application name that lead is for.';
+COMMENT ON COLUMN imap_markers.marker IS 'Current position in imap mailbox';
+COMMENT ON COLUMN imap_markers.updated_at IS 'Time of last mailbox position change';
+COMMENT ON CONSTRAINT imap_markers_pkey ON imap_markers IS 'Primary key constraint for imap_markers app_name column.';
+COMMENT ON CONSTRAINT imap_markers_marker_check ON imap_markers IS 'Check constraint used to enforce that a marker is at least 1.';

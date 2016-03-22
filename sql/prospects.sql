@@ -74,4 +74,10 @@ CREATE INDEX l_referrer_idx ON leads(page_referrer);
 
 CREATE INDEX l_misc_idx ON leads USING GIN(miscellaneous);
 
-CREATE SEQUENCE imap_marker START WITH 1 INCREMENT BY 1;
+CREATE TABLE imap_markers
+(
+    app_name VARCHAR NOT NULL PRIMARY KEY,
+    marker INT8 NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    CHECK(marker > 0)
+);
