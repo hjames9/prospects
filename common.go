@@ -12,6 +12,7 @@ const (
 	GET_METHOD        = "GET"
 	USER_AGENT_HEADER = "User-Agent"
 	USER_AGENT        = "Prospects"
+	DB_DRIVER         = "postgres"
 )
 
 func IsJSON(str string) bool {

@@ -32,8 +32,7 @@ const (
 	EMAIL_REGEX         = "^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$"
 	UUID_REGEX          = "^[a-z0-9]{8}-[a-z0-9]{4}-[1-5][a-z0-9]{3}-[a-z0-9]{4}-[a-z0-9]{12}$"
 	POST_URL            = "/prospects"
-	DB_DRIVER           = "postgres"
-	CONTENT_TYPE_NAME   = "Content-Type"
+	CONTENT_TYPE_HEADER = "Content-Type"
 	JSON_CONTENT_TYPE   = "application/json"
 	XFF_HEADER          = "X-Forwarded-For"
 	STRING_SIZE_LIMIT   = 500
@@ -465,7 +464,7 @@ func main() {
 		log.Print(err)
 	}
 
-	dbCredentials := common.DatabaseCredentials{DB_DRIVER, dbUrl, dbUser, dbPassword, dbName, dbHost, dbPort, dbMaxOpenConns, dbMaxIdleConns}
+	dbCredentials := common.DatabaseCredentials{common.DB_DRIVER, dbUrl, dbUser, dbPassword, dbName, dbHost, dbPort, dbMaxOpenConns, dbMaxIdleConns}
 	if !dbCredentials.IsValid() {
 		log.Fatalf("Database credentials NOT set correctly. %#v", dbCredentials)
 	}
@@ -647,7 +646,7 @@ func setupHttpHandlers(db *sql.DB) (CreateHandler, ErrorHandler, NotFoundHandler
 		log.Printf("Received new prospect: %#v", prospect)
 
 		req.Close = true
-		res.Header().Set(CONTENT_TYPE_NAME, JSON_CONTENT_TYPE)
+		res.Header().Set(CONTENT_TYPE_HEADER, JSON_CONTENT_TYPE)
 		var response Response
 
 		if asyncRequest && running {
@@ -694,7 +693,7 @@ func setupHttpHandlers(db *sql.DB) (CreateHandler, ErrorHandler, NotFoundHandler
 
 			log.Printf("Error received. Fields: %s", fieldsMsg)
 
-			res.Header().Set(CONTENT_TYPE_NAME, JSON_CONTENT_TYPE)
+			res.Header().Set(CONTENT_TYPE_HEADER, JSON_CONTENT_TYPE)
 			var response Response
 
 			if errors.Has(binding.RequiredError) {
@@ -737,7 +736,7 @@ func setupHttpHandlers(db *sql.DB) (CreateHandler, ErrorHandler, NotFoundHandler
 
 	notFoundHandler := func(res http.ResponseWriter, req *http.Request) (int, string) {
 		req.Close = true
-		res.Header().Set(CONTENT_TYPE_NAME, JSON_CONTENT_TYPE)
+		res.Header().Set(CONTENT_TYPE_HEADER, JSON_CONTENT_TYPE)
 		responseStr := fmt.Sprintf("URL Not Found %s", req.URL)
 		response := Response{Code: http.StatusNotFound, Message: responseStr}
 		log.Print(responseStr)

@@ -21,14 +21,14 @@ import (
 )
 
 const (
-	QUERY             = "INSERT INTO prospects.leads(lead_id, app_name, lead_source, email, user_agent, miscellaneous, created_at) VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING id;"
-	GET_IMAP_MARKER   = "SELECT marker FROM prospects.imap_markers WHERE app_name = $1"
-	SET_IMAP_MARKER   = "INSERT INTO prospects.imap_markers (app_name, marker, updated_at) VALUES($1, $2, $3) ON CONFLICT (app_name) DO UPDATE SET marker = prospects.imap_markers.marker + $2, updated_at = $3"
-	DB_DRIVER         = "postgres"
-	EMAIL_REGEX       = "[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+"
-	FROM_HEADER       = "From"
-	USER_AGENT_HEADER = "User-Agent"
-	RFC822            = "RFC822"
+	QUERY           = "INSERT INTO prospects.leads(lead_id, app_name, lead_source, email, user_agent, miscellaneous, created_at) VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING id;"
+	GET_IMAP_MARKER = "SELECT marker FROM prospects.imap_markers WHERE app_name = $1"
+	SET_IMAP_MARKER = "INSERT INTO prospects.imap_markers (app_name, marker, updated_at) VALUES($1, $2, $3) ON CONFLICT (app_name) DO UPDATE SET marker = prospects.imap_markers.marker + $2, updated_at = $3"
+	EMAIL_REGEX     = "[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+"
+	FROM_HEADER     = "From"
+	TO_HEADER       = "To"
+	SUBJECT_HEADER  = "Subject"
+	RFC822          = "RFC822"
 )
 
 type Prospect struct {
@@ -160,7 +160,7 @@ func getLatestMessages(imapServer string, username string, password string, mail
 
 			msgBytes := imap.AsBytes(rsp.MessageInfo().Attrs[RFC822])
 			if msg, err := mail.ReadMessage(bytes.NewReader(msgBytes)); nil != msg {
-				uA := msg.Header.Get(USER_AGENT_HEADER)
+				uA := msg.Header.Get(common.USER_AGENT_HEADER)
 				from := msg.Header.Get(FROM_HEADER)
 
 				fromEmail := emailRegex.FindString(from)
@@ -311,9 +311,10 @@ func sendEmailReply(smtpServer string, smtpUser string, smtpPassword string, smt
 			}
 
 			message := gomail.NewMessage()
-			message.SetHeader("From", smtpUser)
-			message.SetHeader("To", prospect.Email)
-			message.SetHeader("Subject", smtpReplySubject)
+			message.SetHeader(FROM_HEADER, smtpUser)
+			message.SetHeader(TO_HEADER, prospect.Email)
+			message.SetHeader(SUBJECT_HEADER, smtpReplySubject)
+			message.SetHeader(common.USER_AGENT_HEADER, common.USER_AGENT)
 			message.SetBody("text/html", tmplBuffer.String())
 
 			err = sender.Send(smtpUser, []string{prospect.Email}, message)
@@ -411,7 +412,7 @@ func main() {
 
 	//Get database connection
 	log.Print("Enabling database connectivity")
-	dbCredentials := common.DatabaseCredentials{DB_DRIVER, dbUrl, dbUser, dbPassword, dbName, dbHost, dbPort, dbMaxOpenConns, dbMaxIdleConns}
+	dbCredentials := common.DatabaseCredentials{common.DB_DRIVER, dbUrl, dbUser, dbPassword, dbName, dbHost, dbPort, dbMaxOpenConns, dbMaxIdleConns}
 	if !dbCredentials.IsValid() {
 		log.Fatalf("Database credentials NOT set correctly. %#v", dbCredentials)
 	}

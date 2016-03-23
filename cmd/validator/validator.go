@@ -12,7 +12,6 @@ import (
 const (
 	GET_LEADS_QUERY   = "SELECT id, lead_source, email, phone_number, miscellaneous, was_processed, is_valid FROM prospects.leads WHERE was_processed = FALSE ORDER BY id ASC LIMIT $1"
 	UPDATE_LEAD_QUERY = "UPDATE prospects.leads SET was_processed = $1, is_valid = $2, miscellaneous = miscellaneous || $3 WHERE id = $4"
-	DB_DRIVER         = "postgres"
 )
 
 type Validator interface {
@@ -142,7 +141,7 @@ func main() {
 	//Database connection
 	log.Print("Enabling database connectivity")
 
-	dbCredentials := common.DatabaseCredentials{DB_DRIVER, dbUrl, dbUser, dbPassword, dbName, dbHost, dbPort, dbMaxOpenConns, dbMaxIdleConns}
+	dbCredentials := common.DatabaseCredentials{common.DB_DRIVER, dbUrl, dbUser, dbPassword, dbName, dbHost, dbPort, dbMaxOpenConns, dbMaxIdleConns}
 	if !dbCredentials.IsValid() {
 		log.Fatalf("Database credentials NOT set correctly. %#v", dbCredentials)
 	}
