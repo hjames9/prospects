@@ -9,6 +9,7 @@ import (
 	"github.com/mxk/go-imap/imap"
 	"github.com/satori/go.uuid"
 	"gopkg.in/gomail.v2"
+	"html/template"
 	"log"
 	"net/mail"
 	"net/url"
@@ -286,6 +287,14 @@ func sendEmailReply(smtpServer string, smtpUser string, smtpPassword string, smt
 			}
 		}
 
+		//HTML templating
+		tmpl, err := template.New("foo").Parse(string(smtpReplyTemplate))
+		if nil != err {
+			return err
+		}
+		var tmplBuffer bytes.Buffer
+
+		//SMTP client
 		smtpClient := gomail.NewDialer(smtpServer, smtpPort, smtpUser, smtpPassword)
 
 		sender, err := smtpClient.Dial()
@@ -295,11 +304,17 @@ func sendEmailReply(smtpServer string, smtpUser string, smtpPassword string, smt
 		defer sender.Close()
 
 		for _, prospect := range prospects {
+			err = tmpl.Execute(&tmplBuffer, prospect)
+			if nil != err {
+				log.Print(err)
+				continue
+			}
+
 			message := gomail.NewMessage()
 			message.SetHeader("From", smtpUser)
 			message.SetHeader("To", prospect.Email)
 			message.SetHeader("Subject", smtpReplySubject)
-			message.SetBody("text/html", string(smtpReplyTemplate))
+			message.SetBody("text/html", tmplBuffer.String())
 
 			err = sender.Send(smtpUser, []string{prospect.Email}, message)
 			if nil != err {
