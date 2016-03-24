@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	QUERY           = "INSERT INTO prospects.leads(lead_id, app_name, lead_source, email, user_agent, miscellaneous, created_at) VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING id;"
+	QUERY           = "INSERT INTO prospects.leads(lead_id, app_name, lead_source, email, user_agent, miscellaneous, created_at, updated_at) VALUES($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id;"
 	GET_IMAP_MARKER = "SELECT marker FROM prospects.imap_markers WHERE app_name = $1"
 	SET_IMAP_MARKER = "INSERT INTO prospects.imap_markers (app_name, marker, updated_at) VALUES($1, $2, $3) ON CONFLICT (app_name) DO UPDATE SET marker = prospects.imap_markers.marker + $2, updated_at = $3"
 	EMAIL_REGEX     = "[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+"
@@ -100,10 +100,8 @@ func getLatestMessages(imapServer string, username string, password string, mail
 	var prospects []common.Prospect
 
 	//Fetch messages
-	set, err := imap.NewSeqSet("")
-	if nil != err {
-		return nil, err
-	}
+	set, _ := imap.NewSeqSet("")
+	//Ignore error here as it is expected
 
 	latestImapMarket, err := getImapMarker(db, appName)
 	if nil != err && err != sql.ErrNoRows {
@@ -236,7 +234,7 @@ func addNewProspects(prospects []common.Prospect, appName string, db *sql.DB) er
 			miscellaneous = sql.NullString{prospect.Miscellaneous, true}
 		}
 
-		err = statement.QueryRow(prospect.LeadId, prospect.AppName, prospect.LeadSource, prospect.Email, userAgent, miscellaneous, time.Now()).Scan(&unused)
+		err = statement.QueryRow(prospect.LeadId, prospect.AppName, prospect.LeadSource, prospect.Email, userAgent, miscellaneous, time.Now(), time.Now()).Scan(&unused)
 		if nil != err {
 			log.Print(err)
 		}
