@@ -62,6 +62,9 @@ SELECT MAX(id) AS id,
        MAX(zip_code) AS zip_code,
        MAX(language) AS language,
        MAX(user_agent) AS user_agent,
+       JSON_AGG(miscellaneous) AS miscellaneous,
+       BOOL_OR(was_processed) AS was_processed,
+       BOOL_OR(is_valid) AS is_valid,
        MAX(created_at) AS created_at,
        MAX(updated_at) AS updated_at
 FROM leads

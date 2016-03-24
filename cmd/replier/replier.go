@@ -169,11 +169,15 @@ func main() {
 	prospects, err := common.GetProspects(db, FROM_QUERY, processAmt)
 	if nil != err {
 		log.Fatal(err)
+	} else {
+		log.Printf("Successfully fetched %d prospects", len(prospects))
 	}
 
 	//Send thank you reply
 	err = sendEmailReply(smtpHost, smtpUser, smtpPassword, smtpReplyTemplateUrl, smtpReplySubject, db, prospects)
 	if nil != err {
 		log.Fatal(err)
+	} else {
+		log.Print("Successfully sent e-mails")
 	}
 }
