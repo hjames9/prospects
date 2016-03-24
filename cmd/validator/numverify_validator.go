@@ -12,7 +12,7 @@ type NumVerifyValidator struct {
 	ApiKey string
 }
 
-func (validator NumVerifyValidator) Validate(prospect Prospect) (bool, bool, string) {
+func (validator NumVerifyValidator) Validate(prospect common.Prospect) (bool, bool, string) {
 	const (
 		URL = "http://apilayer.net/api/validate?access_key=%s&number=%s"
 	)
@@ -27,12 +27,12 @@ func (validator NumVerifyValidator) Validate(prospect Prospect) (bool, bool, str
 	isValid := false
 	wasProcessed := false
 
-	if !prospect.phoneNumber.Valid {
-		log.Printf("No phone number to validate id %d", prospect.id)
+	if len(prospect.PhoneNumber) <= 0 {
+		log.Printf("No phone number to validate id %d", prospect.Id)
 		return isValid, wasProcessed, miscellaneous
 	}
 
-	url := fmt.Sprintf(URL, validator.ApiKey, prospect.phoneNumber.String)
+	url := fmt.Sprintf(URL, validator.ApiKey, prospect.PhoneNumber)
 	body, responseCode, _, err = common.MakeHttpGetRequest(url)
 	if nil != err {
 		return isValid, wasProcessed, miscellaneous

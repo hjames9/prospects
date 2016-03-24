@@ -40,29 +40,6 @@ const (
 	BotError            = "BotError"
 )
 
-type ProspectForm struct {
-	LeadId        string `form:"leadid" binding:"required"`
-	AppName       string `form:"appname" binding:"required"`
-	Referrer      string
-	PageReferrer  string `form:"pagereferrer"`
-	FirstName     string `form:"firstname"`
-	LastName      string `form:"lastname"`
-	Email         string `form:"email"`
-	LeadSource    string `form:"leadsource" binding:"required"`
-	Feedback      string `form:"feedback"`
-	PhoneNumber   string `form:"phonenumber"`
-	DateOfBirth   string `form:"dob"`
-	Gender        string `form:"gender"`
-	ZipCode       string `form:"zipcode"`
-	Language      string `form:"language"`
-	UserAgent     string
-	Cookies       string
-	Latitude      float64 `form:"latitude"`
-	Longitude     float64 `form:"longitude"`
-	IpAddress     string
-	Miscellaneous string `form:"miscellaneous"`
-}
-
 type Response struct {
 	Code    int
 	Message string
@@ -121,6 +98,8 @@ var uuidRegex *regexp.Regexp
 var emailRegex *regexp.Regexp
 var botDetection BotDetection
 var leadSources map[string]bool
+
+type ProspectForm common.Prospect
 
 func (prospect ProspectForm) Validate(errors binding.Errors, req *http.Request) binding.Errors {
 	errors = validateSizeLimit(prospect.LeadId, "leadid", STRING_SIZE_LIMIT, errors)

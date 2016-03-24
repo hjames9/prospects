@@ -15,31 +15,20 @@ const (
 )
 
 type Validator interface {
-	Validate(Prospect) (bool, bool, string)
+	Validate(common.Prospect) (bool, bool, string)
 }
 
-type Prospect struct {
-	id            int
-	leadSource    string
-	email         sql.NullString
-	phoneNumber   sql.NullString
-	miscellaneous sql.NullString
-	wasProcessed  bool
-	isValid       bool
-	validators    []Validator
-}
-
-func (prospect *Prospect) IsProcessed() bool {
+func IsProcessed(prospect *common.Prospect, validators []Validator) bool {
 	var masterMisc string
 
-	for _, validator := range prospect.validators {
+	for _, validator := range validators {
 		isValid, wasProcessed, miscellaneous := validator.Validate(*prospect)
 		if isValid {
-			prospect.isValid = isValid
+			prospect.IsValid = isValid
 		}
 
 		if wasProcessed {
-			prospect.wasProcessed = wasProcessed
+			prospect.WasProcessed = wasProcessed
 		}
 
 		if masterMisc != "" && miscellaneous != "" {
@@ -52,14 +41,13 @@ func (prospect *Prospect) IsProcessed() bool {
 	}
 
 	if masterMisc != "" {
-		prospect.miscellaneous.String = "[" + masterMisc + "]"
-		prospect.miscellaneous.Valid = true
+		prospect.Miscellaneous = "[" + masterMisc + "]"
 	}
 
-	return prospect.wasProcessed
+	return prospect.WasProcessed
 }
 
-func process(db *sql.DB, prospects []Prospect) {
+func process(db *sql.DB, prospects []common.Prospect, validators []Validator) {
 	transaction, err := db.Begin()
 	if nil != err {
 		log.Print("Error creating transaction")
@@ -78,8 +66,8 @@ func process(db *sql.DB, prospects []Prospect) {
 	counter := 0
 	unused := -1
 	for _, prospect := range prospects {
-		if prospect.IsProcessed() {
-			err = statement.QueryRow(prospect.wasProcessed, prospect.isValid, prospect.miscellaneous, prospect.id).Scan(&unused)
+		if IsProcessed(&prospect, validators) {
+			err = statement.QueryRow(prospect.WasProcessed, prospect.IsValid, prospect.Miscellaneous, prospect.Id).Scan(&unused)
 			if nil != err {
 				log.Print(err)
 			}
@@ -156,7 +144,7 @@ func main() {
 	defer rows.Close()
 
 	var (
-		id            int
+		id            int64
 		leadSource    string
 		email         sql.NullString
 		phoneNumber   sql.NullString
@@ -165,7 +153,7 @@ func main() {
 		isValid       bool
 	)
 
-	var prospects []Prospect
+	var prospects []common.Prospect
 	var validators []Validator
 	validators = append(validators, FullContactValidator{fullContactApiKey})
 	validators = append(validators, NumVerifyValidator{numVerifyApiKey})
@@ -176,7 +164,16 @@ func main() {
 			log.Fatal(err)
 		}
 
-		prospect := Prospect{id, leadSource, email, phoneNumber, miscellaneous, wasProcessed, isValid, validators}
+		var prospect common.Prospect
+
+		prospect.Id = id
+		prospect.LeadSource = leadSource
+		prospect.Email = email.String
+		prospect.PhoneNumber = phoneNumber.String
+		prospect.Miscellaneous = miscellaneous.String
+		prospect.WasProcessed = wasProcessed
+		prospect.IsValid = isValid
+
 		prospects = append(prospects, prospect)
 	}
 
@@ -185,5 +182,5 @@ func main() {
 		log.Fatal(err)
 	}
 
-	process(db, prospects)
+	process(db, prospects, validators)
 }

@@ -11,7 +11,7 @@ type FullContactValidator struct {
 	ApiKey string
 }
 
-func (validator FullContactValidator) Validate(prospect Prospect) (bool, bool, string) {
+func (validator FullContactValidator) Validate(prospect common.Prospect) (bool, bool, string) {
 	const (
 		URL = "https://api.fullcontact.com/v2/person.json?apiKey=%s&email=%s"
 	)
@@ -26,12 +26,12 @@ func (validator FullContactValidator) Validate(prospect Prospect) (bool, bool, s
 	isValid := false
 	wasProcessed := false
 
-	if !prospect.email.Valid {
-		log.Printf("No e-mail to validate id %d", prospect.id)
+	if len(prospect.Email) <= 0 {
+		log.Printf("No e-mail to validate id %d", prospect.Id)
 		return isValid, wasProcessed, miscellaneous
 	}
 
-	url := fmt.Sprintf(URL, validator.ApiKey, prospect.email.String)
+	url := fmt.Sprintf(URL, validator.ApiKey, prospect.Email)
 	body, responseCode, _, err = common.MakeHttpGetRequest(url)
 	if nil != err {
 		log.Print("Error retrieving data from FullContact")

@@ -31,22 +31,13 @@ const (
 	RFC822          = "RFC822"
 )
 
-type Prospect struct {
-	LeadId        uuid.UUID
-	AppName       string
-	LeadSource    string
-	Email         string
-	UserAgent     sql.NullString
-	Miscellaneous sql.NullString
-}
-
 func getImapMarker(db *sql.DB, appName string) (int64, error) {
 	var imapMarker int64
 	err := db.QueryRow(GET_IMAP_MARKER, appName).Scan(&imapMarker)
 	return imapMarker, err
 }
 
-func getLatestMessages(imapServer string, username string, password string, mailbox string, appName string, db *sql.DB) ([]Prospect, error) {
+func getLatestMessages(imapServer string, username string, password string, mailbox string, appName string, db *sql.DB) ([]common.Prospect, error) {
 	//Connect to imap server
 	imapClient, err := imap.DialTLS(imapServer, nil)
 	if nil != err {
@@ -112,7 +103,7 @@ func getLatestMessages(imapServer string, username string, password string, mail
 	log.Print("Mailbox: status\n", imapClient.Mailbox)
 
 	//Prospects array
-	var prospects []Prospect
+	var prospects []common.Prospect
 
 	//Fetch messages
 	set, err := imap.NewSeqSet("")
@@ -160,7 +151,7 @@ func getLatestMessages(imapServer string, username string, password string, mail
 
 			msgBytes := imap.AsBytes(rsp.MessageInfo().Attrs[RFC822])
 			if msg, err := mail.ReadMessage(bytes.NewReader(msgBytes)); nil != msg {
-				uA := msg.Header.Get(common.USER_AGENT_HEADER)
+				userAgent := msg.Header.Get(common.USER_AGENT_HEADER)
 				from := msg.Header.Get(FROM_HEADER)
 
 				fromEmail := emailRegex.FindString(from)
@@ -171,22 +162,23 @@ func getLatestMessages(imapServer string, username string, password string, mail
 
 				leadId := uuid.NewV3(uuid.Nil, fromEmail)
 
-				userAgent := sql.NullString{"", false}
-				if len(uA) > 0 {
-					userAgent.String = uA
-					userAgent.Valid = true
-				}
-
-				miscellaneous := sql.NullString{"", false}
+				var miscellaneous string
 				misc, err := json.Marshal(msg)
 				if nil != err {
 					log.Print(err)
 				} else {
-					miscellaneous.String = "[" + string(misc) + "]"
-					miscellaneous.Valid = true
+					miscellaneous = "[" + string(misc) + "]"
 				}
 
-				prospects = append(prospects, Prospect{leadId, appName, "email", fromEmail, userAgent, miscellaneous})
+				var prospect common.Prospect
+				prospect.LeadId = leadId.String()
+				prospect.AppName = appName
+				prospect.LeadSource = "email"
+				prospect.Email = fromEmail
+				prospect.UserAgent = userAgent
+				prospect.Miscellaneous = miscellaneous
+
+				prospects = append(prospects, prospect)
 				body := make([]byte, 1020400)
 				size, err := msg.Body.Read(body)
 				if nil != err {
@@ -222,7 +214,7 @@ func getLatestMessages(imapServer string, username string, password string, mail
 	return prospects, nil
 }
 
-func addNewProspects(prospects []Prospect, appName string, db *sql.DB) error {
+func addNewProspects(prospects []common.Prospect, appName string, db *sql.DB) error {
 	transaction, err := db.Begin()
 	if nil != err {
 		log.Print("Error creating transaction")
@@ -240,7 +232,17 @@ func addNewProspects(prospects []Prospect, appName string, db *sql.DB) error {
 	counter := 0
 	unused := -1
 	for _, prospect := range prospects {
-		err = statement.QueryRow(prospect.LeadId.String(), prospect.AppName, prospect.LeadSource, prospect.Email, prospect.UserAgent, prospect.Miscellaneous, time.Now()).Scan(&unused)
+		var userAgent sql.NullString
+		if len(prospect.UserAgent) != 0 {
+			userAgent = sql.NullString{prospect.UserAgent, true}
+		}
+
+		var miscellaneous sql.NullString
+		if len(prospect.Miscellaneous) != 0 {
+			miscellaneous = sql.NullString{prospect.Miscellaneous, true}
+		}
+
+		err = statement.QueryRow(prospect.LeadId, prospect.AppName, prospect.LeadSource, prospect.Email, userAgent, miscellaneous, time.Now()).Scan(&unused)
 		if nil != err {
 			log.Print(err)
 		}
@@ -266,7 +268,7 @@ func addNewProspects(prospects []Prospect, appName string, db *sql.DB) error {
 	return nil
 }
 
-func sendEmailReply(smtpServer string, smtpUser string, smtpPassword string, smtpReplyTemplateUrl *url.URL, smtpReplySubject string, prospects []Prospect) error {
+func sendEmailReply(smtpServer string, smtpUser string, smtpPassword string, smtpReplyTemplateUrl *url.URL, smtpReplySubject string, prospects []common.Prospect) error {
 	//Get HTML template
 	smtpReplyTemplate, responseCode, _, err := common.MakeHttpGetRequest(smtpReplyTemplateUrl.String())
 	if nil != err {
