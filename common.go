@@ -91,10 +91,10 @@ func MakeHttpGetRequest(url string) ([]byte, int, map[string][]string, error) {
 
 func GetProspects(db *sql.DB, query string, args ...interface{}) ([]Prospect, error) {
 	const (
-		QUERY = "SELECT id, lead_id, lead_source, appName, email, phone_number, miscellaneous, was_processed, is_valid "
+		QUERY = "SELECT id, lead_id, lead_source, app_name, email, phone_number, miscellaneous, was_processed, is_valid "
 	)
 
-	rows, err := db.Query(QUERY+query, args)
+	rows, err := db.Query(QUERY+query, args...)
 	if nil != err {
 		return nil, err
 	}

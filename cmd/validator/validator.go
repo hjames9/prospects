@@ -69,7 +69,8 @@ func process(db *sql.DB, prospects []common.Prospect, validators []Validator) {
 	for _, prospect := range prospects {
 		if IsProcessed(&prospect, validators) {
 			err = statement.QueryRow(prospect.WasProcessed, prospect.IsValid, prospect.Miscellaneous, time.Now(), prospect.Id).Scan(&unused)
-			if nil != err {
+			if nil != err && sql.ErrNoRows != err {
+				log.Printf("Error processing %#v", prospect)
 				log.Print(err)
 			}
 			counter++
@@ -141,6 +142,8 @@ func main() {
 	prospects, err := common.GetProspects(db, FROM_QUERY, processAmt)
 	if nil != err {
 		log.Fatal(err)
+	} else {
+		log.Printf("Successfully fetched %d prospects", len(prospects))
 	}
 
 	var validators []Validator
