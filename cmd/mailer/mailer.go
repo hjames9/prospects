@@ -21,7 +21,6 @@ const (
 	GET_IMAP_MARKER = "SELECT marker FROM prospects.imap_markers WHERE app_name = $1"
 	SET_IMAP_MARKER = "INSERT INTO prospects.imap_markers (app_name, marker, updated_at) VALUES($1, $2, $3) ON CONFLICT (app_name) DO UPDATE SET marker = prospects.imap_markers.marker + $2, updated_at = $3"
 	EMAIL_REGEX     = "[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+"
-	FROM_HEADER     = "From"
 	RFC822          = "RFC822"
 )
 
@@ -100,8 +99,12 @@ func getLatestMessages(imapServer string, username string, password string, mail
 	var prospects []common.Prospect
 
 	//Fetch messages
-	set, _ := imap.NewSeqSet("")
-	//Ignore error here as it is expected
+	//Ignore error object here as it is expected
+	set, err := imap.NewSeqSet("")
+	if nil == set {
+		log.Print("IMAP query set NOT created")
+		return nil, err
+	}
 
 	latestImapMarket, err := getImapMarker(db, appName)
 	if nil != err && err != sql.ErrNoRows {
@@ -144,7 +147,7 @@ func getLatestMessages(imapServer string, username string, password string, mail
 			msgBytes := imap.AsBytes(rsp.MessageInfo().Attrs[RFC822])
 			if msg, err := mail.ReadMessage(bytes.NewReader(msgBytes)); nil != msg {
 				userAgent := msg.Header.Get(common.USER_AGENT_HEADER)
-				from := msg.Header.Get(FROM_HEADER)
+				from := msg.Header.Get(common.FROM_HEADER)
 
 				fromEmail := emailRegex.FindString(from)
 				if fromEmail == "" {

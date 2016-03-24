@@ -18,7 +18,6 @@ import (
 const (
 	FROM_QUERY     = "FROM prospects.sneezers WHERE lead_source IN ('email', 'landing') AND email IS NOT NULL AND replied_to = FALSE ORDER BY id ASC LIMIT $1;"
 	UPDATE_QUERY   = "UPDATE prospects.leads SET replied_to = TRUE, updated_at = $1 WHERE id = $2"
-	FROM_HEADER    = "From"
 	TO_HEADER      = "To"
 	SUBJECT_HEADER = "Subject"
 )
@@ -68,7 +67,7 @@ func sendEmailReply(smtpServer string, smtpUser string, smtpPassword string, smt
 			}
 
 			message := gomail.NewMessage()
-			message.SetHeader(FROM_HEADER, smtpUser)
+			message.SetHeader(common.FROM_HEADER, smtpUser)
 			message.SetHeader(TO_HEADER, prospect.Email)
 			message.SetHeader(SUBJECT_HEADER, smtpReplySubject)
 			message.SetHeader(common.USER_AGENT_HEADER, common.USER_AGENT)

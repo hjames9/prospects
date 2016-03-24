@@ -14,6 +14,7 @@ const (
 	USER_AGENT_HEADER = "User-Agent"
 	USER_AGENT        = "Prospects"
 	DB_DRIVER         = "postgres"
+	FROM_HEADER       = "From"
 )
 
 type Prospect struct {
