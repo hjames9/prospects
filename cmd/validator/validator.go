@@ -7,11 +7,12 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"time"
 )
 
 const (
-	GET_LEADS_QUERY   = "SELECT id, lead_source, email, phone_number, miscellaneous, was_processed, is_valid FROM prospects.leads WHERE was_processed = FALSE ORDER BY id ASC LIMIT $1"
-	UPDATE_LEAD_QUERY = "UPDATE prospects.leads SET was_processed = $1, is_valid = $2, miscellaneous = miscellaneous || $3 WHERE id = $4"
+	FROM_QUERY        = "FROM prospects.leads WHERE was_processed = FALSE ORDER BY id ASC LIMIT $1"
+	UPDATE_LEAD_QUERY = "UPDATE prospects.leads SET was_processed = $1, is_valid = $2, miscellaneous = miscellaneous || $3, updated_at = $4 WHERE id = $5"
 )
 
 type Validator interface {
@@ -67,7 +68,7 @@ func process(db *sql.DB, prospects []common.Prospect, validators []Validator) {
 	unused := -1
 	for _, prospect := range prospects {
 		if IsProcessed(&prospect, validators) {
-			err = statement.QueryRow(prospect.WasProcessed, prospect.IsValid, prospect.Miscellaneous, prospect.Id).Scan(&unused)
+			err = statement.QueryRow(prospect.WasProcessed, prospect.IsValid, prospect.Miscellaneous, time.Now(), prospect.Id).Scan(&unused)
 			if nil != err {
 				log.Print(err)
 			}
@@ -137,50 +138,14 @@ func main() {
 	db := dbCredentials.GetDatabase()
 	defer db.Close()
 
-	rows, err := db.Query(GET_LEADS_QUERY, processAmt)
+	prospects, err := common.GetProspects(db, FROM_QUERY, processAmt)
 	if nil != err {
 		log.Fatal(err)
 	}
-	defer rows.Close()
 
-	var (
-		id            int64
-		leadSource    string
-		email         sql.NullString
-		phoneNumber   sql.NullString
-		miscellaneous sql.NullString
-		wasProcessed  bool
-		isValid       bool
-	)
-
-	var prospects []common.Prospect
 	var validators []Validator
 	validators = append(validators, FullContactValidator{fullContactApiKey})
 	validators = append(validators, NumVerifyValidator{numVerifyApiKey})
-
-	for rows.Next() {
-		err := rows.Scan(&id, &leadSource, &email, &phoneNumber, &miscellaneous, &wasProcessed, &isValid)
-		if nil != err {
-			log.Fatal(err)
-		}
-
-		var prospect common.Prospect
-
-		prospect.Id = id
-		prospect.LeadSource = leadSource
-		prospect.Email = email.String
-		prospect.PhoneNumber = phoneNumber.String
-		prospect.Miscellaneous = miscellaneous.String
-		prospect.WasProcessed = wasProcessed
-		prospect.IsValid = isValid
-
-		prospects = append(prospects, prospect)
-	}
-
-	err = rows.Err()
-	if nil != err {
-		log.Fatal(err)
-	}
 
 	process(db, prospects, validators)
 }

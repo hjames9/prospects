@@ -1,6 +1,7 @@
 package common
 
 import (
+	"database/sql"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -86,4 +87,58 @@ func MakeHttpGetRequest(url string) ([]byte, int, map[string][]string, error) {
 	}
 
 	return body, response.StatusCode, response.Header, nil
+}
+
+func GetProspects(db *sql.DB, query string, args ...interface{}) ([]Prospect, error) {
+	const (
+		QUERY = "SELECT id, lead_id, lead_source, appName, email, phone_number, miscellaneous, was_processed, is_valid "
+	)
+
+	rows, err := db.Query(QUERY+query, args)
+	if nil != err {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var (
+		id            int64
+		leadId        string
+		leadSource    string
+		appName       string
+		email         sql.NullString
+		phoneNumber   sql.NullString
+		miscellaneous sql.NullString
+		wasProcessed  bool
+		isValid       bool
+	)
+
+	var prospects []Prospect
+
+	for rows.Next() {
+		err := rows.Scan(&id, &leadId, &leadSource, &appName, &email, &phoneNumber, &miscellaneous, &wasProcessed, &isValid)
+		if nil != err {
+			continue
+		}
+
+		var prospect Prospect
+
+		prospect.Id = id
+		prospect.LeadId = leadId
+		prospect.LeadSource = leadSource
+		prospect.AppName = appName
+		prospect.Email = email.String
+		prospect.PhoneNumber = phoneNumber.String
+		prospect.Miscellaneous = miscellaneous.String
+		prospect.WasProcessed = wasProcessed
+		prospect.IsValid = isValid
+
+		prospects = append(prospects, prospect)
+	}
+
+	err = rows.Err()
+	if nil != err {
+		return prospects, err
+	}
+
+	return prospects, nil
 }

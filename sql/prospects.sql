@@ -32,7 +32,9 @@ CREATE TABLE leads
     miscellaneous JSONB NULL,
     is_valid BOOLEAN NOT NULL DEFAULT FALSE,
     was_processed BOOLEAN NOT NULL DEFAULT FALSE,
+    replied_to BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
     CHECK(email ~* '^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$'),
     CHECK(geolocation[0] >= -90.0 AND geolocation[0] <= 90.0 AND geolocation[1] >= -180.0 AND geolocation[1] <= 180.0),
     CHECK(lead_source <> 'landing' OR (lead_source = 'landing' AND (email IS NOT NULL OR phone_number IS NOT NULL))),
@@ -48,7 +50,8 @@ AS
 SELECT MAX(id) AS id,
        lead_id,
        app_name,
-       MAX(email) AS email,
+       email,
+       replied_to,
        MAX(lead_source) AS lead_source,
        MAX(feedback) AS feedback,
        MAX(first_name) AS first_name,
@@ -59,10 +62,11 @@ SELECT MAX(id) AS id,
        MAX(zip_code) AS zip_code,
        MAX(language) AS language,
        MAX(user_agent) AS user_agent,
-       MAX(created_at) AS created_at
+       MAX(created_at) AS created_at,
+       MAX(updated_at) AS updated_at
 FROM leads
 WHERE is_valid = TRUE AND was_processed = TRUE
-GROUP BY lead_id, app_name, email;
+GROUP BY lead_id, app_name, email, replied_to;
 
 CREATE INDEX l_lead_id_idx ON leads(lead_id);
 

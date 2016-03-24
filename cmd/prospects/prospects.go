@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	QUERY               = "INSERT INTO prospects.leads(lead_id, app_name, email, lead_source, feedback, referrer, page_referrer, first_name, last_name, phone_number, dob, gender, zip_code, language, user_agent, cookies, geolocation, ip_address, miscellaneous, created_at) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, POINT($17, $18), $19, $20, $21) RETURNING id;"
+	QUERY               = "INSERT INTO prospects.leads(lead_id, app_name, email, lead_source, feedback, referrer, page_referrer, first_name, last_name, phone_number, dob, gender, zip_code, language, user_agent, cookies, geolocation, ip_address, miscellaneous, created_at, updated_at) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, POINT($17, $18), $19, $20, $21, $22) RETURNING id;"
 	ID_QUERY            = "SELECT last_value, increment_by FROM prospects.leads_id_seq"
 	LEAD_SOURCE_QUERY   = "SELECT enum_range(NULL::prospects.lead_source) AS lead_sources"
 	EMAIL_REGEX         = "^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$"
@@ -812,9 +812,9 @@ func addProspect(db *sql.DB, prospect ProspectForm, statement *sql.Stmt) (int64,
 	var lastInsertId int64
 	var err error
 	if nil == statement {
-		err = db.QueryRow(QUERY, prospect.LeadId, prospect.AppName, email, prospect.LeadSource, feedback, referrer, pageReferrer, firstName, lastName, phoneNumber, dob, gender, zipCode, language, userAgent, cookies, latitude, longitude, ipAddress, miscellaneous, time.Now()).Scan(&lastInsertId)
+		err = db.QueryRow(QUERY, prospect.LeadId, prospect.AppName, email, prospect.LeadSource, feedback, referrer, pageReferrer, firstName, lastName, phoneNumber, dob, gender, zipCode, language, userAgent, cookies, latitude, longitude, ipAddress, miscellaneous, time.Now(), time.Now()).Scan(&lastInsertId)
 	} else {
-		err = statement.QueryRow(prospect.LeadId, prospect.AppName, email, prospect.LeadSource, feedback, referrer, pageReferrer, firstName, lastName, phoneNumber, dob, gender, zipCode, language, userAgent, cookies, latitude, longitude, ipAddress, miscellaneous, time.Now()).Scan(&lastInsertId)
+		err = statement.QueryRow(prospect.LeadId, prospect.AppName, email, prospect.LeadSource, feedback, referrer, pageReferrer, firstName, lastName, phoneNumber, dob, gender, zipCode, language, userAgent, cookies, latitude, longitude, ipAddress, miscellaneous, time.Now(), time.Now()).Scan(&lastInsertId)
 	}
 
 	if nil == err {

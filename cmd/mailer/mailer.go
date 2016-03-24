@@ -8,15 +8,11 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/mxk/go-imap/imap"
 	"github.com/satori/go.uuid"
-	"gopkg.in/gomail.v2"
-	"html/template"
 	"log"
 	"net/mail"
-	"net/url"
 	"os"
 	"regexp"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -26,8 +22,6 @@ const (
 	SET_IMAP_MARKER = "INSERT INTO prospects.imap_markers (app_name, marker, updated_at) VALUES($1, $2, $3) ON CONFLICT (app_name) DO UPDATE SET marker = prospects.imap_markers.marker + $2, updated_at = $3"
 	EMAIL_REGEX     = "[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+"
 	FROM_HEADER     = "From"
-	TO_HEADER       = "To"
-	SUBJECT_HEADER  = "Subject"
 	RFC822          = "RFC822"
 )
 
@@ -268,67 +262,6 @@ func addNewProspects(prospects []common.Prospect, appName string, db *sql.DB) er
 	return nil
 }
 
-func sendEmailReply(smtpServer string, smtpUser string, smtpPassword string, smtpReplyTemplateUrl *url.URL, smtpReplySubject string, prospects []common.Prospect) error {
-	//Get HTML template
-	smtpReplyTemplate, responseCode, _, err := common.MakeHttpGetRequest(smtpReplyTemplateUrl.String())
-	if nil != err {
-		return err
-	}
-
-	if responseCode >= 200 && responseCode <= 299 && len(smtpReplyTemplate) > 0 {
-		//Connect to smtp server
-		smtpPair := strings.Split(smtpServer, ":")
-		smtpPort := 25
-		if len(smtpPair) == 2 {
-			smtpPort, err = strconv.Atoi(smtpPair[1])
-			smtpServer = smtpPair[0]
-			if nil != err {
-				log.Printf("Invalid port number specified: %s.  Setting to default port 25.", smtpPair[1])
-				log.Print(err)
-				smtpPort = 25
-			}
-		}
-
-		//HTML templating
-		tmpl, err := template.New("foo").Parse(string(smtpReplyTemplate))
-		if nil != err {
-			return err
-		}
-		var tmplBuffer bytes.Buffer
-
-		//SMTP client
-		smtpClient := gomail.NewDialer(smtpServer, smtpPort, smtpUser, smtpPassword)
-
-		sender, err := smtpClient.Dial()
-		if nil != err {
-			return err
-		}
-		defer sender.Close()
-
-		for _, prospect := range prospects {
-			err = tmpl.Execute(&tmplBuffer, prospect)
-			if nil != err {
-				log.Print(err)
-				continue
-			}
-
-			message := gomail.NewMessage()
-			message.SetHeader(FROM_HEADER, smtpUser)
-			message.SetHeader(TO_HEADER, prospect.Email)
-			message.SetHeader(SUBJECT_HEADER, smtpReplySubject)
-			message.SetHeader(common.USER_AGENT_HEADER, common.USER_AGENT)
-			message.SetBody("text/html", tmplBuffer.String())
-
-			err = sender.Send(smtpUser, []string{prospect.Email}, message)
-			if nil != err {
-				log.Print(err)
-			}
-		}
-	}
-
-	return nil
-}
-
 func main() {
 	//Get application name
 	appName := os.Getenv("APPLICATION_NAME")
@@ -354,38 +287,6 @@ func main() {
 
 	if len(imapsPassword) <= 0 {
 		log.Fatal("IMAPS_PASSWORD is NOT set")
-	}
-
-	//SMTP server and reply template
-	smtpHost := os.Getenv("SMTP_HOST")
-	smtpUser := os.Getenv("SMTP_USER")
-	smtpPassword := os.Getenv("SMTP_PASSWORD")
-	smtpReplyTemplateUrlStr := os.Getenv("SMTP_REPLY_TEMPLATE_URL")
-	smtpReplySubject := os.Getenv("SMTP_REPLY_SUBJECT")
-
-	if len(smtpHost) <= 0 {
-		log.Fatal("SMTP_HOST is NOT set")
-	}
-
-	if len(smtpUser) <= 0 {
-		log.Fatal("SMTP_USER is NOT set")
-	}
-
-	if len(smtpPassword) <= 0 {
-		log.Fatal("SMTP_PASSWORD is NOT set")
-	}
-
-	if len(smtpReplyTemplateUrlStr) <= 0 {
-		log.Fatal("SMTP_REPLY_TEMPLATE_URL is NOT set")
-	}
-
-	smtpReplyTemplateUrl, err := url.Parse(smtpReplyTemplateUrlStr)
-	if nil != err {
-		log.Fatalf("SMTP reply template URL is invalid: %s", smtpReplyTemplateUrlStr)
-	}
-
-	if len(smtpReplySubject) <= 0 {
-		log.Fatal("SMTP_REPLY_SUBJECT is NOT set")
 	}
 
 	//Database connection
@@ -430,12 +331,6 @@ func main() {
 
 	//Add prospects from e-mail messages
 	err = addNewProspects(prospects, appName, db)
-	if nil != err {
-		log.Fatal(err)
-	}
-
-	//Send thank you reply
-	err = sendEmailReply(smtpHost, smtpUser, smtpPassword, smtpReplyTemplateUrl, smtpReplySubject, prospects)
 	if nil != err {
 		log.Fatal(err)
 	}

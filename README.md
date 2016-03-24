@@ -1,5 +1,5 @@
 # Prospects:  Toolkit for collecting sales prospects
-A Go-based http server and e-mail processor to collect potential prospects and persist them to a Postgresql database.  Also provides validation of collected data.
+A Go-based http server and e-mail processor to collect potential prospects and persist them to a Postgresql database.  Also provides validation of collected data and HTML e-mail responses.
 
 ## prospects - http server
 
@@ -45,11 +45,6 @@ A Go-based http server and e-mail processor to collect potential prospects and p
     IMAPS_USER=info@best_products.com (no default)
     IMAPS_PASSWORD=blahblah (no default)
     IMAPS_MAILBOX=SPECIAL (default is "INBOX")
-    SMTP_HOST=smtp.gmail.com:587 (no default)
-    SMTP_USER=info@best_products.com (no default)
-    SMTP_PASSWORD=blahblah (no default)
-    SMTP_REPLY_TEMPLATE_URL=http://dev.best_products.com/email.html (no default)
-    SMTP_REPLY_SUBJECT=Thank you your interest! (no default)
 
 ## validator - data validation
 
@@ -66,3 +61,20 @@ A Go-based http server and e-mail processor to collect potential prospects and p
     FULLCONTACT_APIKEY=0d9817d9-b9bd-4e15-871b-a2a3a1101ab5 (no default)
     NUMVERIFY_APIKEY=d7f10b5a-e34d-4c75-8345-425691939c36 (no default)
 
+## replier - e-mail responses to prospects
+
+### Setup - Set environmental variables
+    DATABASE_URL=postgres://user:password@localhost:5432/prospect_db (no default)
+    DB_USER=hjames (no default, ignored with DATABASE_URL set)
+    DB_PASSWORD=blahblah (no default, ignored with DATABASE_URL set)
+    DB_NAME=prospect_db (no default, ignored with DATABASE_URL set)
+    DB_HOST=localhost (default is localhost, ignored with DATABASE_URL set)
+    DB_PORT=5432 (default is 5432, ignored with DATABASE_URL set)
+    DB_MAX_OPEN_CONNS=100 (default is 10)
+    DB_MAX_IDLE_CONNS=100 (default is 0)
+    PROCESS_AMT=3 (default is 3)
+    SMTP_HOST=smtp.gmail.com:587 (no default)
+    SMTP_USER=info@best_products.com (no default)
+    SMTP_PASSWORD=blahblah (no default)
+    SMTP_REPLY_TEMPLATE_URL=http://dev.best_products.com/email.html (no default)
+    SMTP_REPLY_SUBJECT=Thank you your interest! (no default)
