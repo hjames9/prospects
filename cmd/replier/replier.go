@@ -62,8 +62,7 @@ func sendEmailReply(smtpServer string, smtpUser string, smtpPassword string, smt
 		for _, prospect := range prospects {
 			err = tmpl.Execute(&tmplBuffer, prospect)
 			if nil != err {
-				log.Print(err)
-				continue
+				return err
 			}
 
 			message := gomail.NewMessage()
@@ -175,7 +174,10 @@ func main() {
 	//Send thank you reply
 	err = sendEmailReply(smtpHost, smtpUser, smtpPassword, smtpReplyTemplateUrl, smtpReplySubject, db, prospects)
 	if nil != err {
+		log.Print("Error sending e-mails")
 		log.Fatal(err)
+	} else if len(prospects) == 0 {
+		log.Print("No new prospects received")
 	} else {
 		log.Print("Successfully sent e-mails")
 	}
