@@ -39,6 +39,7 @@ COMMENT ON CONSTRAINT leads_check ON leads IS 'Check constraint used to enforce 
 COMMENT ON CONSTRAINT leads_check1 ON leads IS 'Check constraint used to enforce that a given lead with an email source has an e-mail address.';
 COMMENT ON CONSTRAINT leads_check2 ON leads IS 'Check constraint used to enforce that a given lead with a phone source has a phone number.';
 COMMENT ON CONSTRAINT leads_check3 ON leads IS 'Check constraint used to enforce that a given lead with a feedback source has feedback.';
+COMMENT ON CONSTRAINT leads_check4 ON leads IS 'Check constraint used to enforce that a given lead with a extended source has an extended field.';
 COMMENT ON CONSTRAINT leads_email_check ON leads IS 'Check constraint used to enforce correct e-mail address format.';
 COMMENT ON CONSTRAINT leads_geolocation_check ON leads IS 'Check constraint used to enforce correct values for latitude and longitude.';
 

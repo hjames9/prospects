@@ -40,7 +40,8 @@ CREATE TABLE leads
     CHECK(lead_source <> 'landing' OR (lead_source = 'landing' AND (email IS NOT NULL OR phone_number IS NOT NULL))),
     CHECK(lead_source <> 'phone' OR (lead_source = 'phone' AND phone_number IS NOT NULL)),
     CHECK(lead_source <> 'email' OR (lead_source = 'email' AND email IS NOT NULL)),
-    CHECK(lead_source <> 'feedback' OR (lead_source = 'feedback' AND feedback IS NOT NULL))
+    CHECK(lead_source <> 'feedback' OR (lead_source = 'feedback' AND feedback IS NOT NULL)),
+    CHECK(lead_source <> 'extended' OR (lead_source = 'extended' AND (first_name IS NOT NULL OR last_name IS NOT NULL OR dob IS NOT NULL OR gender IS NOT NULL OR zip_code IS NOT NULL OR language IS NOT NULL OR miscellaneous IS NOT NULL)))
 );
 
 ALTER SEQUENCE leads_id_seq INCREMENT BY 7 START WITH 31337 RESTART WITH 31337;

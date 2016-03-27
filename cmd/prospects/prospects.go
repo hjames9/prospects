@@ -35,8 +35,6 @@ const (
 	CONTENT_TYPE_HEADER = "Content-Type"
 	JSON_CONTENT_TYPE   = "application/json"
 	XFF_HEADER          = "X-Forwarded-For"
-	STRING_SIZE_LIMIT   = 500
-	FEEDBACK_SIZE_LIMIT = 3000
 	BotError            = "BotError"
 )
 
@@ -93,6 +91,8 @@ type CreateHandler func(http.ResponseWriter, *http.Request, ProspectForm) (int, 
 type ErrorHandler func(binding.Errors, http.ResponseWriter)
 type NotFoundHandler func(http.ResponseWriter, *http.Request) (int, string)
 
+var stringSizeLimit int
+var feedbackSizeLimit int
 var appNames map[string]bool
 var uuidRegex *regexp.Regexp
 var emailRegex *regexp.Regexp
@@ -102,24 +102,24 @@ var leadSources map[string]bool
 type ProspectForm common.Prospect
 
 func (prospect ProspectForm) Validate(errors binding.Errors, req *http.Request) binding.Errors {
-	errors = validateSizeLimit(prospect.LeadId, "leadid", STRING_SIZE_LIMIT, errors)
-	errors = validateSizeLimit(prospect.AppName, "appname", STRING_SIZE_LIMIT, errors)
-	errors = validateSizeLimit(prospect.Referrer, "referrer", STRING_SIZE_LIMIT, errors)
-	errors = validateSizeLimit(prospect.PageReferrer, "pagereferrer", STRING_SIZE_LIMIT, errors)
-	errors = validateSizeLimit(prospect.FirstName, "firstname", STRING_SIZE_LIMIT, errors)
-	errors = validateSizeLimit(prospect.LastName, "lastname", STRING_SIZE_LIMIT, errors)
-	errors = validateSizeLimit(prospect.Email, "email", STRING_SIZE_LIMIT, errors)
-	errors = validateSizeLimit(prospect.LeadSource, "leadsource", STRING_SIZE_LIMIT, errors)
-	errors = validateSizeLimit(prospect.Feedback, "feedback", FEEDBACK_SIZE_LIMIT, errors)
-	errors = validateSizeLimit(prospect.PhoneNumber, "phonenumber", STRING_SIZE_LIMIT, errors)
-	errors = validateSizeLimit(prospect.DateOfBirth, "dob", STRING_SIZE_LIMIT, errors)
-	errors = validateSizeLimit(prospect.Gender, "gender", STRING_SIZE_LIMIT, errors)
-	errors = validateSizeLimit(prospect.ZipCode, "zipcode", STRING_SIZE_LIMIT, errors)
-	errors = validateSizeLimit(prospect.Language, "language", STRING_SIZE_LIMIT, errors)
-	errors = validateSizeLimit(prospect.UserAgent, "useragent", STRING_SIZE_LIMIT, errors)
-	errors = validateSizeLimit(prospect.Cookies, "cookies", STRING_SIZE_LIMIT, errors)
-	errors = validateSizeLimit(prospect.IpAddress, "ipaddress", STRING_SIZE_LIMIT, errors)
-	errors = validateSizeLimit(prospect.Miscellaneous, "miscellaneous", STRING_SIZE_LIMIT, errors)
+	errors = validateSizeLimit(prospect.LeadId, "leadid", stringSizeLimit, errors)
+	errors = validateSizeLimit(prospect.AppName, "appname", stringSizeLimit, errors)
+	errors = validateSizeLimit(prospect.Referrer, "referrer", stringSizeLimit, errors)
+	errors = validateSizeLimit(prospect.PageReferrer, "pagereferrer", stringSizeLimit, errors)
+	errors = validateSizeLimit(prospect.FirstName, "firstname", stringSizeLimit, errors)
+	errors = validateSizeLimit(prospect.LastName, "lastname", stringSizeLimit, errors)
+	errors = validateSizeLimit(prospect.Email, "email", stringSizeLimit, errors)
+	errors = validateSizeLimit(prospect.LeadSource, "leadsource", stringSizeLimit, errors)
+	errors = validateSizeLimit(prospect.Feedback, "feedback", feedbackSizeLimit, errors)
+	errors = validateSizeLimit(prospect.PhoneNumber, "phonenumber", stringSizeLimit, errors)
+	errors = validateSizeLimit(prospect.DateOfBirth, "dob", stringSizeLimit, errors)
+	errors = validateSizeLimit(prospect.Gender, "gender", stringSizeLimit, errors)
+	errors = validateSizeLimit(prospect.ZipCode, "zipcode", stringSizeLimit, errors)
+	errors = validateSizeLimit(prospect.Language, "language", stringSizeLimit, errors)
+	errors = validateSizeLimit(prospect.UserAgent, "useragent", stringSizeLimit, errors)
+	errors = validateSizeLimit(prospect.Cookies, "cookies", stringSizeLimit, errors)
+	errors = validateSizeLimit(prospect.IpAddress, "ipaddress", stringSizeLimit, errors)
+	errors = validateSizeLimit(prospect.Miscellaneous, "miscellaneous", stringSizeLimit, errors)
 
 	if len(errors) == 0 {
 		if len(prospect.AppName) > 0 && appNames != nil && !appNames[prospect.AppName] {
@@ -151,6 +151,14 @@ func (prospect ProspectForm) Validate(errors binding.Errors, req *http.Request) 
 
 		if prospect.LeadSource == "feedback" && len(prospect.Feedback) == 0 {
 			errors = addError(errors, []string{"leadsource", "feedback"}, binding.RequiredError, "Feedback required with feedback lead source.")
+		}
+
+		IsNotExtended := func(prospect ProspectForm) bool {
+			return len(prospect.FirstName) == 0 && len(prospect.LastName) == 0 && len(prospect.Gender) == 0 && len(prospect.DateOfBirth) == 0 && len(prospect.ZipCode) == 0 && len(prospect.Language) == 0 && len(prospect.Miscellaneous) == 0
+		}
+
+		if prospect.LeadSource == "extended" && IsNotExtended(prospect) {
+			errors = addError(errors, []string{"leadsource", "extended"}, binding.RequiredError, "First name, last name, gender, date of birth, zip code, language and/or miscellaneous is required with extended lead source.")
 		}
 
 		if len(prospect.Email) > 0 && !emailRegex.MatchString(prospect.Email) {
@@ -457,6 +465,24 @@ func main() {
 
 	db := dbCredentials.GetDatabase()
 	defer db.Close()
+
+	//Get configurable string size limits
+	stringSizeLimitStr := common.GetenvWithDefault("STRING_SIZE_LIMIT", "500")
+	feedbackSizeLimitStr := common.GetenvWithDefault("FEEDBACK_SIZE_LIMIT", "3000")
+
+	stringSizeLimit, err = strconv.Atoi(stringSizeLimitStr)
+	if nil != err {
+		stringSizeLimit = 500
+		log.Printf("Error setting string size limit from value: %s. Default to %d", stringSizeLimitStr, stringSizeLimit)
+		log.Print(err)
+	}
+
+	feedbackSizeLimit, err = strconv.Atoi(feedbackSizeLimitStr)
+	if nil != err {
+		feedbackSizeLimit = 10
+		log.Printf("Error setting feedback size limit from value: %s. Default to %d", feedbackSizeLimitStr, feedbackSizeLimit)
+		log.Print(err)
+	}
 
 	//Allowable Application names
 	appNamesStr := os.Getenv("APPLICATION_NAMES")
