@@ -31,7 +31,7 @@ const (
 	LEAD_SOURCE_QUERY   = "SELECT enum_range(NULL::prospects.lead_source) AS lead_sources"
 	EMAIL_REGEX         = "^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$"
 	UUID_REGEX          = "^[a-z0-9]{8}-[a-z0-9]{4}-[1-5][a-z0-9]{3}-[a-z0-9]{4}-[a-z0-9]{12}$"
-	POST_URL            = "/prospects"
+	REQUEST_URL         = "/prospects"
 	CONTENT_TYPE_HEADER = "Content-Type"
 	JSON_CONTENT_TYPE   = "application/json"
 	XFF_HEADER          = "X-Forwarded-For"
@@ -887,7 +887,7 @@ func runHttpServer(createHandler CreateHandler, errorHandler ErrorHandler, notFo
 		SSLRedirect: sslRedirect,
 	}))
 
-	martini_.Post(POST_URL, binding.Form(ProspectForm{}), errorHandler, createHandler)
+	martini_.Post(REQUEST_URL, binding.Form(ProspectForm{}), errorHandler, createHandler)
 	martini_.NotFound(notFoundHandler)
 	martini_.Run()
 }
