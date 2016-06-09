@@ -11,7 +11,6 @@ import (
 	"github.com/martini-contrib/cors"
 	"github.com/martini-contrib/secure"
 	"log"
-	"math"
 	"math/rand"
 	"net"
 	"net/http"
@@ -281,11 +280,10 @@ func getLeadSources(db *sql.DB) string {
 }
 
 var asyncRequest bool
-var prospects chan ProspectForm
-var running bool
-var waitGroup sync.WaitGroup
+var db *sql.DB
+var prospectBatchProcessor *common.BatchProcessor
 
-func processProspect(db *sql.DB, prospectBatch []ProspectForm) {
+func processProspect(prospectBatch []interface{}, waitGroup *sync.WaitGroup) {
 	log.Printf("Starting batch processing of %d prospects", len(prospectBatch))
 
 	defer waitGroup.Done()
@@ -306,7 +304,8 @@ func processProspect(db *sql.DB, prospectBatch []ProspectForm) {
 	defer statement.Close()
 
 	counter := 0
-	for _, prospect := range prospectBatch {
+	for _, prospectInterface := range prospectBatch {
+		prospect := prospectInterface.(*ProspectForm)
 		_, err = addProspect(db, prospect, statement)
 		if nil != err {
 			log.Printf("Error processing prospect %#v", prospect)
@@ -323,68 +322,6 @@ func processProspect(db *sql.DB, prospectBatch []ProspectForm) {
 		log.Print(err)
 	} else {
 		log.Printf("Processed %d prospects", counter)
-	}
-}
-
-func batchAddProspect(db *sql.DB, asyncProcessInterval time.Duration, dbMaxOpenConns int) {
-	log.Print("Started batch writing thread")
-
-	defer waitGroup.Done()
-
-	for running {
-		time.Sleep(asyncProcessInterval * time.Second)
-
-		var elements []ProspectForm
-		processing := true
-		for processing {
-			select {
-			case prospect, ok := <-prospects:
-				if ok {
-					elements = append(elements, prospect)
-					break
-				} else {
-					log.Print("Select channel closed")
-					processing = false
-					running = false
-					break
-				}
-			default:
-				processing = false
-				break
-			}
-		}
-
-		if len(elements) <= 0 {
-			continue
-		}
-
-		log.Printf("Retrieved %d prospects.  Processing with %d connections", len(elements), dbMaxOpenConns)
-
-		sliceSize := int(math.Floor(float64(len(elements) / dbMaxOpenConns)))
-		remainder := len(elements) % dbMaxOpenConns
-		start := 0
-		end := 0
-
-		for iter := 0; iter < dbMaxOpenConns; iter++ {
-			var leftover int
-			if remainder > 0 {
-				leftover = 1
-				remainder--
-			} else {
-				leftover = 0
-			}
-
-			end += sliceSize + leftover
-
-			if start == end {
-				break
-			}
-
-			waitGroup.Add(1)
-			go processProspect(db, elements[start:end])
-
-			start = end
-		}
 	}
 }
 
@@ -426,7 +363,7 @@ func main() {
 	//Database connection
 	log.Print("Enabling database connectivity")
 
-	db := dbCredentials.GetDatabase()
+	db = dbCredentials.GetDatabase()
 	defer db.Close()
 
 	//Get configurable string size limits
@@ -540,7 +477,6 @@ func main() {
 	asyncRequest, err = strconv.ParseBool(common.GetenvWithDefault("ASYNC_REQUEST", "false"))
 	if nil != err {
 		asyncRequest = false
-		running = false
 		log.Printf("Error converting input for field ASYNC_REQUEST. Defaulting to false.")
 		log.Print(err)
 	}
@@ -562,10 +498,8 @@ func main() {
 	}
 
 	if asyncRequest {
-		waitGroup.Add(1)
-		running = true
-		prospects = make(chan ProspectForm, asyncRequestSize)
-		go batchAddProspect(db, time.Duration(asyncProcessInterval), dbMaxOpenConns)
+		prospectBatchProcessor = common.NewBatchProcessor(processProspect, asyncRequestSize, asyncProcessInterval, dbMaxOpenConns)
+		prospectBatchProcessor.Start()
 		log.Printf("Asynchronous requests enabled. Request queue size set to %d", asyncRequestSize)
 		log.Printf("Asynchronous process interval is %d seconds", asyncProcessInterval)
 	}
@@ -577,8 +511,10 @@ func main() {
 	go func() {
 		<-signals
 		log.Print("Shutting down...")
-		running = false
-		waitGroup.Wait()
+		if nil != prospectBatchProcessor {
+			prospectBatchProcessor.Stop()
+			log.Print("Prospect batch processor shut down")
+		}
 		os.Exit(0)
 	}()
 
@@ -617,17 +553,17 @@ func setupHttpHandlers(db *sql.DB) (CreateHandler, ErrorHandler, NotFoundHandler
 		res.Header().Set(CONTENT_TYPE_HEADER, JSON_CONTENT_TYPE)
 		var response Response
 
-		if asyncRequest && running {
-			prospects <- prospect
+		if asyncRequest && prospectBatchProcessor.Running {
+			prospectBatchProcessor.AddEvent(&prospect)
 			responseStr := "Successfully added prospect"
 			response = Response{Code: http.StatusAccepted, Message: responseStr}
 			log.Print(responseStr)
-		} else if asyncRequest && !running {
+		} else if asyncRequest && !prospectBatchProcessor.Running {
 			responseStr := "Could not add prospect due to server maintenance"
 			response = Response{Code: http.StatusServiceUnavailable, Message: responseStr}
 			log.Print(responseStr)
 		} else {
-			id, err := addProspect(db, prospect, nil)
+			id, err := addProspect(db, &prospect, nil)
 			if nil != err {
 				responseStr := "Could not add prospect due to server error"
 				response = Response{Code: http.StatusInternalServerError, Message: responseStr}
@@ -715,7 +651,7 @@ func setupHttpHandlers(db *sql.DB) (CreateHandler, ErrorHandler, NotFoundHandler
 	return createHandler, errorHandler, notFoundHandler
 }
 
-func addProspect(db *sql.DB, prospect ProspectForm, statement *sql.Stmt) (int64, error) {
+func addProspect(db *sql.DB, prospect *ProspectForm, statement *sql.Stmt) (int64, error) {
 	var email sql.NullString
 	if len(prospect.Email) != 0 {
 		email = sql.NullString{prospect.Email, true}
