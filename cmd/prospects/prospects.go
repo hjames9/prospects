@@ -35,7 +35,6 @@ const (
 	CONTENT_TYPE_HEADER = "Content-Type"
 	JSON_CONTENT_TYPE   = "application/json"
 	XFF_HEADER          = "X-Forwarded-For"
-	BotError            = "BotError"
 )
 
 type Response struct {
@@ -44,48 +43,12 @@ type Response struct {
 	Id      int64 `json:",omitempty"`
 }
 
-type RequestLocation int
-
-const (
-	Header RequestLocation = 1 << iota
-	Body
-)
-
 type Position int
 
 const (
 	First Position = 1 << iota
 	Last
 )
-
-type BotDetection struct {
-	FieldLocation RequestLocation
-	FieldName     string
-	FieldValue    string
-	MustMatch     bool
-	PlayCoy       bool
-}
-
-func (botDetection BotDetection) IsBot(req *http.Request) bool {
-	var botField string
-
-	switch botDetection.FieldLocation {
-	case Header:
-		botField = req.Header.Get(botDetection.FieldName)
-		break
-	case Body:
-		botField = req.FormValue(botDetection.FieldName)
-		break
-	}
-
-	if botDetection.MustMatch && botDetection.FieldValue == botField {
-		return false
-	} else if !botDetection.MustMatch && botDetection.FieldValue != botField {
-		return false
-	}
-
-	return true
-}
 
 type CreateHandler func(http.ResponseWriter, *http.Request, ProspectForm) (int, string)
 type ErrorHandler func(binding.Errors, http.ResponseWriter)
@@ -96,7 +59,7 @@ var feedbackSizeLimit int
 var appNames map[string]bool
 var uuidRegex *regexp.Regexp
 var emailRegex *regexp.Regexp
-var botDetection BotDetection
+var botDetection common.BotDetection
 var leadSources map[string]bool
 
 type ProspectForm common.Prospect
@@ -206,7 +169,7 @@ func (prospect ProspectForm) Validate(errors binding.Errors, req *http.Request) 
 
 		if botDetection.IsBot(req) {
 			message := "Go away spambot! We've alerted the authorities"
-			errors = addError(errors, []string{"spambot"}, BotError, message)
+			errors = addError(errors, []string{"spambot"}, common.BOT_ERROR, message)
 		}
 	}
 
@@ -537,17 +500,17 @@ func main() {
 	botDetectionMustMatchStr := common.GetenvWithDefault("BOTDETECT_MUSTMATCH", "true")
 	botDetectionPlayCoyStr := common.GetenvWithDefault("BOTDETECT_PLAYCOY", "true")
 
-	var botDetectionFieldLocation RequestLocation
+	var botDetectionFieldLocation common.RequestLocation
 
 	switch botDetectionFieldLocationStr {
 	case "header":
-		botDetectionFieldLocation = Header
+		botDetectionFieldLocation = common.Header
 		break
 	case "body":
-		botDetectionFieldLocation = Body
+		botDetectionFieldLocation = common.Body
 		break
 	default:
-		botDetectionFieldLocation = Body
+		botDetectionFieldLocation = common.Body
 		log.Printf("Error with int input for field %s with value %s.  Defaulting to Body.", "BOTDETECT_FIELDLOCATION", botDetectionFieldLocationStr)
 		break
 	}
@@ -566,7 +529,7 @@ func main() {
 		log.Print(err)
 	}
 
-	botDetection = BotDetection{botDetectionFieldLocation, botDetectionFieldName, botDetectionFieldValue, botDetectionMustMatch, botDetectionPlayCoy}
+	botDetection = common.BotDetection{botDetectionFieldLocation, botDetectionFieldName, botDetectionFieldValue, botDetectionMustMatch, botDetectionPlayCoy}
 
 	log.Printf("Creating robot detection with %#v", botDetection)
 
@@ -714,7 +677,7 @@ func setupHttpHandlers(db *sql.DB) (CreateHandler, ErrorHandler, NotFoundHandler
 			} else if errors.Has(binding.TypeError) {
 				res.WriteHeader(http.StatusBadRequest)
 				response = Response{Code: http.StatusBadRequest, Message: errors[0].Error()}
-			} else if errors.Has(BotError) {
+			} else if errors.Has(common.BOT_ERROR) {
 				if botDetection.PlayCoy && !asyncRequest {
 					res.WriteHeader(http.StatusCreated)
 					response = Response{Code: http.StatusCreated, Message: "Successfully added prospect", Id: getNextId(db)}
@@ -854,7 +817,7 @@ func runHttpServer(createHandler CreateHandler, errorHandler ErrorHandler, notFo
 	martini_ := martini.Classic()
 
 	allowHeaders := []string{"Origin"}
-	if botDetection.FieldLocation == Header {
+	if botDetection.FieldLocation == common.Header {
 		allowHeaders = append(allowHeaders, botDetection.FieldName)
 	}
 
@@ -871,7 +834,7 @@ func runHttpServer(createHandler CreateHandler, errorHandler ErrorHandler, notFo
 
 	martini_.Use(cors.Allow(&cors.Options{
 		AllowOrigins:     []string{"*"},
-		AllowMethods:     []string{"POST"},
+		AllowMethods:     []string{common.POST_METHOD},
 		AllowHeaders:     allowHeaders,
 		AllowCredentials: true,
 	}))
