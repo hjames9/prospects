@@ -1,6 +1,7 @@
 {
 	"ImportPath": "github.com/hjames9/prospects",
 	"GoVersion": "go1.6",
+	"GodepVersion": "v65",
 	"Packages": [
 		"./..."
 	],
