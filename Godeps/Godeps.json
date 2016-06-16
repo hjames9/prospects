@@ -35,6 +35,10 @@
 			"Rev": "553b9208d353a39b0850c02355f478ba020c86d7"
 		},
 		{
+			"ImportPath": "github.com/martini-contrib/gzip",
+			"Rev": "6c035326b43f79aa18793d2f1db512d21253ea61"
+		},
+		{
 			"ImportPath": "github.com/martini-contrib/secure",
 			"Rev": "de8e19a0490b816696d093388d53f2e1f0c08b7d"
 		},

@@ -14,6 +14,8 @@ A Go-based http server and e-mail processor to collect potential prospects and p
     DB_MAX_IDLE_CONNS=100 (default is 0)
     PGAPPNAME=prospects (default is prospects)
     SSL_REDIRECT=true (default is false)
+    GZIP_RESPONSE=false (default is true)
+    GZIP_COMPRESSION_LEVEL=9 (Any value 1-9, default is 6)
     HOST=localhost (default is all interfaces (blank))
     PORT=8080 (default is 3000)
     MARTINI_ENV=production (default is development)
