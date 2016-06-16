@@ -796,6 +796,7 @@ func runHttpServer(createHandler CreateHandler, errorHandler ErrorHandler, notFo
 
 	log.Printf("Allowable header names: %s", allowHeaders)
 
+	//GZIP responses
 	if gzipResponse {
 		martini_.Use(gzip.All(gzip.Options{CompressionLevel: gzipCompressionLevel}))
 	}
