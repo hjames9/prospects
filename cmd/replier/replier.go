@@ -16,10 +16,11 @@ import (
 )
 
 const (
-	FROM_QUERY     = "FROM prospects.sneezers WHERE lead_source IN ('email', 'landing') AND email IS NOT NULL AND replied_to = FALSE ORDER BY id ASC LIMIT $1;"
-	UPDATE_QUERY   = "UPDATE prospects.leads SET replied_to = TRUE, updated_at = $1 WHERE id = $2"
-	TO_HEADER      = "To"
-	SUBJECT_HEADER = "Subject"
+	FROM_QUERY        = "FROM prospects.sneezers WHERE lead_source IN ('email', 'landing') AND email IS NOT NULL AND replied_to = FALSE ORDER BY id ASC LIMIT $1;"
+	UPDATE_QUERY      = "UPDATE prospects.leads SET replied_to = TRUE, updated_at = $1 WHERE id = $2"
+	TO_HEADER         = "To"
+	SUBJECT_HEADER    = "Subject"
+	HTML_CONTENT_TYPE = "text/html"
 )
 
 func sendEmailReply(smtpServer string, smtpUser string, smtpPassword string, smtpReplyTemplateUrl *url.URL, smtpReplySubject string, db *sql.DB, prospects []common.Prospect) error {
@@ -52,7 +53,6 @@ func sendEmailReply(smtpServer string, smtpUser string, smtpPassword string, smt
 
 		//SMTP client
 		smtpClient := gomail.NewDialer(smtpServer, smtpPort, smtpUser, smtpPassword)
-
 		sender, err := smtpClient.Dial()
 		if nil != err {
 			return err
@@ -70,7 +70,7 @@ func sendEmailReply(smtpServer string, smtpUser string, smtpPassword string, smt
 			message.SetHeader(TO_HEADER, prospect.Email)
 			message.SetHeader(SUBJECT_HEADER, smtpReplySubject)
 			message.SetHeader(common.USER_AGENT_HEADER, common.USER_AGENT)
-			message.SetBody("text/html", tmplBuffer.String())
+			message.SetBody(HTML_CONTENT_TYPE, tmplBuffer.String())
 
 			err = sender.Send(smtpUser, []string{prospect.Email}, message)
 			if nil != err {
@@ -113,7 +113,8 @@ func main() {
 
 	smtpReplyTemplateUrl, err := url.Parse(smtpReplyTemplateUrlStr)
 	if nil != err {
-		log.Fatalf("SMTP reply template URL is invalid: %s", smtpReplyTemplateUrlStr)
+		log.Printf("SMTP reply template URL is invalid: %s", smtpReplyTemplateUrlStr)
+		log.Fatal(err)
 	}
 
 	if len(smtpReplySubject) <= 0 {
