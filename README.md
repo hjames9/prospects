@@ -33,7 +33,7 @@ A Go-based http server and e-mail processor to collect potential prospects and p
     STRING_SIZE_LIMIT=1000 (default is 500)
     FEEDBACK_SIZE_LIMIT=5000 (default is 3000)
 
-## mailer - e-mail data processor
+## emissary - e-mail prospects retriever
 
 ### Setup - Set environmental variables
     DATABASE_URL=postgres://user:password@localhost:5432/prospect_db (no default)

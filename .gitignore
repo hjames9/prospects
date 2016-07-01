@@ -29,7 +29,9 @@ prospects
 validator
 mailer
 replier
+emissary
 cmd/prospects/prospects
 cmd/validator/validator
 cmd/mailer/mailer
 cmd/replier/replier
+cmd/emissary/emissary
