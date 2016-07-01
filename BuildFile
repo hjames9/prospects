@@ -1,1 +1,1 @@
-make: go build ./cmd/prospects && go build ./cmd/emissary && go build ./cmd/validator && go build ./cmd/replier
+make: go build ./cmd/prospects && go build ./cmd/emissary && go build ./cmd/validator && go build ./cmd/mailer

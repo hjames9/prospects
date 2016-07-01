@@ -65,7 +65,7 @@ A Go-based http server and e-mail processor to collect potential prospects and p
     FULLCONTACT_APIKEY=0d9817d9-b9bd-4e15-871b-a2a3a1101ab5 (no default)
     NUMVERIFY_APIKEY=d7f10b5a-e34d-4c75-8345-425691939c36 (no default)
 
-## replier - e-mail responses to prospects
+## mailer - e-mail responses to prospects
 
 ### Setup - Set environmental variables
     DATABASE_URL=postgres://user:password@localhost:5432/prospect_db (no default)
