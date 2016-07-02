@@ -89,3 +89,22 @@ CREATE TABLE imap_markers
     updated_at TIMESTAMP NOT NULL,
     CHECK(marker > 0)
 );
+
+CREATE TABLE mailer_queries
+(
+    mailer_name VARCHAR NOT NULL PRIMARY KEY,
+    source_email_address VARCHAR NOT NULL,
+    get_email_data_query VARCHAR NOT NULL,
+    dest_email_field_name VARCHAR NOT NULL,
+    email_subject VARCHAR NOT NULL,
+    email_subject_field_names VARCHAR[] NULL,
+    email_template_url VARCHAR NOT NULL,
+    update_status_query VARCHAR NULL,
+    update_status_identifer VARCHAR NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    CHECK(source_email_address ~* '^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$'),
+    CHECK(email_subject_field_names IS NOT NULL OR (email_subject_field_names IS NULL AND email_subject !~* '%\S*')),
+    CHECK(email_template_url ~* 'https?:\/\/.+'),
+    CHECK(update_status_query IS NULL OR (update_status_query IS NOT NULL AND update_status_identifer IS NOT NULL))
+);

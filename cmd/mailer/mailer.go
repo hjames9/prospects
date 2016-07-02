@@ -1,99 +1,87 @@
 package main
 
 import (
-	"bytes"
 	"database/sql"
+	"flag"
 	"github.com/hjames9/prospects"
 	_ "github.com/lib/pq"
-	"gopkg.in/gomail.v2"
-	"html/template"
 	"log"
-	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 )
 
 const (
-	FROM_QUERY        = "FROM prospects.sneezers WHERE lead_source IN ('email', 'landing') AND email IS NOT NULL AND replied_to = FALSE ORDER BY id ASC LIMIT $1;"
-	UPDATE_QUERY      = "UPDATE prospects.leads SET replied_to = TRUE, updated_at = $1 WHERE id = $2"
-	TO_HEADER         = "To"
-	SUBJECT_HEADER    = "Subject"
-	HTML_CONTENT_TYPE = "text/html"
+	QUERY       = "SELECT mailer_name, source_email_address, get_email_data_query, dest_email_field_name, email_subject, email_subject_field_names, email_template_url, update_status_query, update_status_identifer FROM prospects.mailer_queries WHERE mailer_name = $1"
+	LIMIT_REGEX = "LIMIT\\s+\\$1"
 )
 
-func sendEmailReply(smtpServer string, smtpUser string, smtpPassword string, smtpReplyTemplateUrl *url.URL, smtpReplySubject string, db *sql.DB, prospects []common.Prospect) error {
-	//Get HTML template
-	smtpReplyTemplate, responseCode, _, err := common.MakeHttpGetRequest(smtpReplyTemplateUrl.String())
-	if nil != err {
-		return err
-	}
+type MailerQuery struct {
+	MailerName                string
+	SourceEmailAddress        string
+	GetEmailDataQuery         string
+	DestinationEmailFieldName string
+	EmailSubject              string
+	EmailSubjectFieldNames    []string
+	EmailTemplateUrl          string
+	UpdateStatusQuery         string
+	UpdateStatusIdentifer     string
+}
 
-	if responseCode >= 200 && responseCode <= 299 && len(smtpReplyTemplate) > 0 {
-		//Connect to smtp server
-		smtpPair := strings.Split(smtpServer, ":")
-		smtpPort := 25
-		if len(smtpPair) == 2 {
-			smtpPort, err = strconv.Atoi(smtpPair[1])
-			smtpServer = smtpPair[0]
-			if nil != err {
-				log.Printf("Invalid port number specified: %s.  Setting to default port 25.", smtpPair[1])
-				log.Print(err)
-				smtpPort = 25
-			}
+func getMailerQuery(db *sql.DB, mailerName string) (MailerQuery, error) {
+	var (
+		mailerQuery            MailerQuery
+		emailSubjectFieldNames sql.NullString
+		updateStatusQuery      sql.NullString
+		updateStatusIdentifer  sql.NullString
+	)
+
+	err := db.QueryRow(QUERY, mailerName).Scan(&mailerQuery.MailerName, &mailerQuery.SourceEmailAddress, &mailerQuery.GetEmailDataQuery, &mailerQuery.DestinationEmailFieldName, &mailerQuery.EmailSubject, &emailSubjectFieldNames, &mailerQuery.EmailTemplateUrl, &updateStatusQuery, &updateStatusIdentifer)
+
+	if nil == err {
+		if emailSubjectFieldNames.Valid {
+			mailerQuery.EmailSubjectFieldNames = strings.Split(strings.Trim(emailSubjectFieldNames.String, "{}"), ",")
 		}
 
-		//HTML templating
-		tmpl, err := template.New("foo").Parse(string(smtpReplyTemplate))
-		if nil != err {
-			return err
+		if updateStatusQuery.Valid {
+			mailerQuery.UpdateStatusQuery = updateStatusQuery.String
 		}
-		var tmplBuffer bytes.Buffer
 
-		//SMTP client
-		smtpClient := gomail.NewDialer(smtpServer, smtpPort, smtpUser, smtpPassword)
-		sender, err := smtpClient.Dial()
-		if nil != err {
-			return err
-		}
-		defer sender.Close()
-
-		for _, prospect := range prospects {
-			err = tmpl.Execute(&tmplBuffer, prospect)
-			if nil != err {
-				return err
-			}
-
-			message := gomail.NewMessage()
-			message.SetHeader(common.FROM_HEADER, smtpUser)
-			message.SetHeader(TO_HEADER, prospect.Email)
-			message.SetHeader(SUBJECT_HEADER, smtpReplySubject)
-			message.SetHeader(common.USER_AGENT_HEADER, common.USER_AGENT)
-			message.SetBody(HTML_CONTENT_TYPE, tmplBuffer.String())
-
-			err = sender.Send(smtpUser, []string{prospect.Email}, message)
-			if nil != err {
-				log.Print(err)
-			} else {
-				_, err := db.Exec(UPDATE_QUERY, time.Now(), prospect.Id)
-				if nil != err {
-					log.Print(err)
-				}
-			}
+		if updateStatusIdentifer.Valid {
+			mailerQuery.UpdateStatusIdentifer = updateStatusIdentifer.String
 		}
 	}
 
-	return nil
+	return mailerQuery, err
+}
+
+type UpdateReplyStatus struct {
+	query      string
+	queryField string
+	db         *sql.DB
+	count      int
+}
+
+func (urs *UpdateReplyStatus) Processed(templateData map[string]string, completeTemplate string, success bool) bool {
+	if success {
+		_, err := urs.db.Exec(urs.query, time.Now(), templateData[urs.queryField])
+		if nil != err {
+			log.Print(err)
+		}
+		urs.count++
+		return true
+	} else {
+		return false
+	}
 }
 
 func main() {
-	//SMTP server and reply template
+	//SMTP server information
 	smtpHost := os.Getenv("SMTP_HOST")
 	smtpUser := os.Getenv("SMTP_USER")
 	smtpPassword := os.Getenv("SMTP_PASSWORD")
-	smtpReplyTemplateUrlStr := os.Getenv("SMTP_REPLY_TEMPLATE_URL")
-	smtpReplySubject := os.Getenv("SMTP_REPLY_SUBJECT")
 
 	if len(smtpHost) <= 0 {
 		log.Fatal("SMTP_HOST is NOT set")
@@ -107,20 +95,6 @@ func main() {
 		log.Fatal("SMTP_PASSWORD is NOT set")
 	}
 
-	if len(smtpReplyTemplateUrlStr) <= 0 {
-		log.Fatal("SMTP_REPLY_TEMPLATE_URL is NOT set")
-	}
-
-	smtpReplyTemplateUrl, err := url.Parse(smtpReplyTemplateUrlStr)
-	if nil != err {
-		log.Printf("SMTP reply template URL is invalid: %s", smtpReplyTemplateUrlStr)
-		log.Fatal(err)
-	}
-
-	if len(smtpReplySubject) <= 0 {
-		log.Fatal("SMTP_REPLY_SUBJECT is NOT set")
-	}
-
 	//Database connection
 	dbUrl := os.Getenv("DATABASE_URL")
 	dbUser := os.Getenv("DB_USER")
@@ -130,7 +104,6 @@ func main() {
 	dbPort := common.GetenvWithDefault("DB_PORT", "5432")
 	dbMaxOpenConnsStr := common.GetenvWithDefault("DB_MAX_OPEN_CONNS", "10")
 	dbMaxIdleConnsStr := common.GetenvWithDefault("DB_MAX_IDLE_CONNS", "0")
-	processAmtStr := common.GetenvWithDefault("PROCESS_AMT", "3")
 
 	dbMaxOpenConns, err := strconv.Atoi(dbMaxOpenConnsStr)
 	if nil != err {
@@ -155,31 +128,56 @@ func main() {
 	db := dbCredentials.GetDatabase()
 	defer db.Close()
 
-	//Get process amount
-	processAmt, err := strconv.Atoi(processAmtStr)
-	if nil != err {
-		processAmt = 3
-		log.Printf("Error setting process amount from value: %s. Default to %d", processAmtStr, processAmt)
-		log.Print(err)
+	//Command line arguments
+	mailerName := flag.String("mailer_name", "", "Name of mailer to process")
+	processAmt := flag.Int("process_amt", 3, "Amount of mails to process")
+	flag.Parse()
+
+	if len(*mailerName) <= 0 {
+		flag.Usage()
+		os.Exit(1)
 	}
 
-	//Get latest prospects
-	log.Print("Fetching latest prospects")
-	prospects, err := common.GetProspects(db, FROM_QUERY, processAmt)
+	//Mailer query
+	mailerQuery, err := getMailerQuery(db, *mailerName)
 	if nil != err {
+		log.Printf("Could not retrieve mailer query data for %s", *mailerName)
 		log.Fatal(err)
-	} else {
-		log.Printf("Successfully fetched %d prospects", len(prospects))
 	}
 
-	//Send thank you reply
-	err = sendEmailReply(smtpHost, smtpUser, smtpPassword, smtpReplyTemplateUrl, smtpReplySubject, db, prospects)
+	//Limit regex
+	log.Print("Compiling limit regular expression")
+	limitRegex, err := regexp.Compile(LIMIT_REGEX)
+	if nil != err {
+		log.Print(err)
+		log.Fatalf("Limit regex compilation failed for %s", LIMIT_REGEX)
+	}
+
+	dbParameters := make([]interface{}, 0)
+
+	if limitRegex.MatchString(mailerQuery.GetEmailDataQuery) {
+		log.Print("Email data query has parameterized LIMIT clause.  Adding process amount")
+		dbParameters = append(dbParameters, *processAmt)
+	} else {
+		log.Print("Query doesn't contain LIMIT statement.  Process amount ignored")
+	}
+
+	urs := &UpdateReplyStatus{mailerQuery.UpdateStatusQuery, mailerQuery.UpdateStatusIdentifer, db, 0}
+
+	emailSubjectFieldNames := make([]interface{}, 0)
+	for _, emailSubjectFieldName := range mailerQuery.EmailSubjectFieldNames {
+		emailSubjectFieldNames = append(emailSubjectFieldNames, emailSubjectFieldName)
+	}
+
+	dtm := common.DatabaseTemplateMailer{smtpHost, smtpUser, smtpPassword, mailerQuery.EmailSubject, emailSubjectFieldNames, mailerQuery.EmailTemplateUrl, mailerQuery.GetEmailDataQuery, dbParameters, mailerQuery.DestinationEmailFieldName, mailerQuery.SourceEmailAddress, db, urs}
+
+	err = dtm.SendMail()
 	if nil != err {
 		log.Print("Error sending e-mails")
 		log.Fatal(err)
-	} else if len(prospects) == 0 {
-		log.Print("No new prospects received")
+	} else if urs.count == 0 {
+		log.Print("No new messages to send")
 	} else {
-		log.Print("Successfully sent e-mails")
+		log.Printf("Successfully sent %d e-mails", urs.count)
 	}
 }
