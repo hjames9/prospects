@@ -168,7 +168,11 @@ func (dtm *DatabaseTemplateMailer) SendMail() error {
 
 		smtpSubjectValues := make([]string, 0)
 		for _, smtpSubjectValue := range dtm.SmtpSubjectValues {
-			smtpSubjectValues = append(smtpSubjectValues, templateData[smtpSubjectValue.(string)])
+			if _, exists := templateData[smtpSubjectValue.(string)]; exists {
+				smtpSubjectValues = append(smtpSubjectValues, templateData[smtpSubjectValue.(string)])
+			} else {
+				log.Printf("SMTP subject value %s does not exist in template data", smtpSubjectValue.(string))
+			}
 		}
 
 		emailSubject := fmt.Sprintf(dtm.SmtpSubject, smtpSubjectValues)
