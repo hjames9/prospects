@@ -1,9 +1,9 @@
 package main
 
 import (
+	"bitbucket.org/savewithus/prospects"
 	"encoding/json"
 	"fmt"
-	"github.com/hjames9/prospects"
 	"log"
 	"net/http"
 )

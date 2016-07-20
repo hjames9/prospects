@@ -1,11 +1,11 @@
 package main
 
 import (
+	"bitbucket.org/savewithus/prospects"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"github.com/go-martini/martini"
-	"github.com/hjames9/prospects"
 	_ "github.com/lib/pq"
 	"github.com/martini-contrib/binding"
 	"github.com/martini-contrib/cors"

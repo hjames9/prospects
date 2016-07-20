@@ -1,10 +1,10 @@
 package main
 
 import (
+	"bitbucket.org/savewithus/prospects"
 	"bytes"
 	"database/sql"
 	"encoding/json"
-	"github.com/hjames9/prospects"
 	_ "github.com/lib/pq"
 	"github.com/mxk/go-imap/imap"
 	"github.com/satori/go.uuid"

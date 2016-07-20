@@ -1,9 +1,9 @@
 package main
 
 import (
+	"bitbucket.org/savewithus/prospects"
 	"database/sql"
 	"flag"
-	"github.com/hjames9/prospects"
 	_ "github.com/lib/pq"
 	"log"
 	"os"
