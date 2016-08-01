@@ -32,8 +32,11 @@ const (
 	EMAIL_REGEX         = "^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$"
 	UUID_REGEX          = "^[a-z0-9]{8}-[a-z0-9]{4}-[1-5][a-z0-9]{3}-[a-z0-9]{4}-[a-z0-9]{12}$"
 	REQUEST_URL         = "/prospects"
+	ROBOTS_TXT_URL      = "/robots.txt"
 	CONTENT_TYPE_HEADER = "Content-Type"
 	JSON_CONTENT_TYPE   = "application/json"
+	XML_CONTENT_TYPE    = "application/xml"
+	TEXT_CONTENT_TYPE   = "text/plain"
 	XFF_HEADER          = "X-Forwarded-For"
 )
 
@@ -63,6 +66,7 @@ var botDetection common.BotDetection
 var leadSources map[string]bool
 var gzipResponse bool
 var gzipCompressionLevel int
+var robotsTxtResponse bool
 
 type ProspectForm common.Prospect
 
@@ -532,6 +536,21 @@ func main() {
 		log.Printf("Asynchronous process interval is %d seconds", asyncProcessInterval)
 	}
 
+	//robots.txt
+	robotsTxtResponseStr := common.GetenvWithDefault("ROBOTS_TXT", "false")
+	robotsTxtResponse, err = strconv.ParseBool(robotsTxtResponseStr)
+	if nil != err {
+		robotsTxtResponse = false
+		log.Printf("Error converting boolean input for field %s with value %s. Defaulting to false.", "ROBOTS_TXT", robotsTxtResponseStr)
+		log.Print(err)
+	}
+
+	if robotsTxtResponse {
+		log.Print("robots.txt support enabled")
+	} else {
+		log.Print("robots.txt support disabled")
+	}
+
 	//Signal handler
 	signals := make(chan os.Signal)
 	signal.Notify(signals, os.Interrupt)
@@ -803,7 +822,7 @@ func runHttpServer(createHandler CreateHandler, errorHandler ErrorHandler, notFo
 
 	martini_.Use(cors.Allow(&cors.Options{
 		AllowOrigins:     []string{"*"},
-		AllowMethods:     []string{common.POST_METHOD},
+		AllowMethods:     []string{common.POST_METHOD, common.GET_METHOD, common.HEAD_METHOD},
 		AllowHeaders:     allowHeaders,
 		AllowCredentials: true,
 	}))
@@ -818,6 +837,18 @@ func runHttpServer(createHandler CreateHandler, errorHandler ErrorHandler, notFo
 	martini_.Use(secure.Secure(secure.Options{
 		SSLRedirect: sslRedirect,
 	}))
+
+	//robots.txt
+	if robotsTxtResponse {
+		getRobotsTxt := func(res http.ResponseWriter, req *http.Request) (int, string) {
+			res.Header().Set(CONTENT_TYPE_HEADER, TEXT_CONTENT_TYPE)
+			var robotsTxt common.RobotsTxt
+			robotsTxt.AddRecord(common.RobotsRecord{[]string{"*"}, []string{"/"}})
+			return http.StatusOK, robotsTxt.String()
+		}
+		martini_.Get(ROBOTS_TXT_URL, getRobotsTxt, errorHandler)
+		martini_.Head(ROBOTS_TXT_URL, getRobotsTxt, errorHandler)
+	}
 
 	martini_.Post(REQUEST_URL, binding.Form(ProspectForm{}), errorHandler, createHandler)
 	martini_.NotFound(notFoundHandler)
