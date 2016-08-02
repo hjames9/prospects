@@ -33,6 +33,8 @@ A Go-based http server and e-mail processor to collect potential prospects and p
     STRING_SIZE_LIMIT=1000 (default is 500)
     FEEDBACK_SIZE_LIMIT=5000 (default is 3000)
     ROBOTS_TXT=true (default is false)
+    SITEMAP_XML=true (default is false)
+    FAVICON_ICO=true (default is false)
 
 ## emissary - e-mail prospects retriever
 

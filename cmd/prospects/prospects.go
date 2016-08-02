@@ -33,6 +33,8 @@ const (
 	UUID_REGEX          = "^[a-z0-9]{8}-[a-z0-9]{4}-[1-5][a-z0-9]{3}-[a-z0-9]{4}-[a-z0-9]{12}$"
 	REQUEST_URL         = "/prospects"
 	ROBOTS_TXT_URL      = "/robots.txt"
+	SITEMAP_XML_URL     = "/sitemap.xml"
+	FAVICON_ICO_URL     = "/favicon.ico"
 	CONTENT_TYPE_HEADER = "Content-Type"
 	JSON_CONTENT_TYPE   = "application/json"
 	XML_CONTENT_TYPE    = "application/xml"
@@ -67,6 +69,8 @@ var leadSources map[string]bool
 var gzipResponse bool
 var gzipCompressionLevel int
 var robotsTxtResponse bool
+var sitemapXmlResponse bool
+var faviconIcoResponse bool
 
 type ProspectForm common.Prospect
 
@@ -551,6 +555,36 @@ func main() {
 		log.Print("robots.txt support disabled")
 	}
 
+	//sitemap.xml
+	sitemapXmlResponseStr := common.GetenvWithDefault("SITEMAP_XML", "false")
+	sitemapXmlResponse, err = strconv.ParseBool(sitemapXmlResponseStr)
+	if nil != err {
+		sitemapXmlResponse = false
+		log.Printf("Error converting boolean input for field %s with value %s. Defaulting to false.", "SITEMAP_XML", sitemapXmlResponseStr)
+		log.Print(err)
+	}
+
+	if sitemapXmlResponse {
+		log.Print("sitemap.xml support enabled")
+	} else {
+		log.Print("sitemap.xml support disabled")
+	}
+
+	//favicon.ico
+	faviconIcoResponseStr := common.GetenvWithDefault("FAVICON_ICO", "false")
+	faviconIcoResponse, err = strconv.ParseBool(faviconIcoResponseStr)
+	if nil != err {
+		faviconIcoResponse = false
+		log.Printf("Error converting boolean input for field %s with value %s. Defaulting to false.", "FAVICON_ICO", faviconIcoResponseStr)
+		log.Print(err)
+	}
+
+	if faviconIcoResponse {
+		log.Print("favicon.ico support enabled")
+	} else {
+		log.Print("favicon.ico support disabled")
+	}
+
 	//Signal handler
 	signals := make(chan os.Signal)
 	signal.Notify(signals, os.Interrupt)
@@ -848,6 +882,34 @@ func runHttpServer(createHandler CreateHandler, errorHandler ErrorHandler, notFo
 		}
 		martini_.Get(ROBOTS_TXT_URL, getRobotsTxt, errorHandler)
 		martini_.Head(ROBOTS_TXT_URL, getRobotsTxt, errorHandler)
+	}
+
+	//sitemap.xml
+	if sitemapXmlResponse {
+		getSitemapXml := func(res http.ResponseWriter, req *http.Request) (int, string) {
+			res.Header().Set(CONTENT_TYPE_HEADER, XML_CONTENT_TYPE)
+
+			hostname := fmt.Sprintf("%s://%s", common.GetScheme(req), req.Host)
+			var urlSet common.UrlSet
+
+			url := fmt.Sprintf("%s%s", hostname, REQUEST_URL)
+			urlSet.AddUrl(common.Url{Location: url, LastModification: time.Now(), ChangeFrequency: common.Always, Priority: 1.0})
+			return http.StatusOK, urlSet.String()
+		}
+		martini_.Get(SITEMAP_XML_URL, getSitemapXml, errorHandler)
+		martini_.Head(SITEMAP_XML_URL, getSitemapXml, errorHandler)
+	}
+
+	//favicon.ico
+	if faviconIcoResponse {
+		getFaviconIco := func(res http.ResponseWriter, req *http.Request) (int, string) {
+			res.Header().Set(CONTENT_TYPE_HEADER, common.ICO_CONTENT_TYPE)
+			var favicon common.FaviconIco
+			favicon.CreateImage(0xA384C1FF, 16, 16)
+			return http.StatusOK, string(favicon.GetImageData())
+		}
+		martini_.Get(FAVICON_ICO_URL, getFaviconIco, errorHandler)
+		martini_.Head(FAVICON_ICO_URL, getFaviconIco, errorHandler)
 	}
 
 	martini_.Post(REQUEST_URL, binding.Form(ProspectForm{}), errorHandler, createHandler)

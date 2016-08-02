@@ -17,6 +17,7 @@ const (
 	USER_AGENT        = "Prospects"
 	DB_DRIVER         = "postgres"
 	FROM_HEADER       = "From"
+	XFP_HEADER        = "X-Forwarded-Proto"
 )
 
 type Prospect struct {
@@ -144,4 +145,17 @@ func GetProspects(db *sql.DB, query string, args ...interface{}) ([]Prospect, er
 	}
 
 	return prospects, nil
+}
+
+func GetScheme(request *http.Request) string {
+	prot := request.Header.Get(XFP_HEADER)
+	if len(prot) > 0 {
+		return prot
+	}
+
+	if nil == request.TLS {
+		return "http"
+	} else {
+		return "https"
+	}
 }
