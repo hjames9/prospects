@@ -35,6 +35,7 @@ A Go-based http server and e-mail processor to collect potential prospects and p
     ROBOTS_TXT=true (default is false)
     SITEMAP_XML=true (default is false)
     FAVICON_ICO=true (default is false)
+    VERIFY_LEAD_REDIRECT_URLS=tremont|https://RidingWithZiggy.com,laconia|https://LeapingWithLothos.com (no default)
 
 ## emissary - e-mail prospects retriever
 

@@ -15,6 +15,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"regexp"
@@ -26,20 +27,26 @@ import (
 )
 
 const (
-	QUERY               = "INSERT INTO prospects.leads(lead_id, app_name, email, lead_source, feedback, referrer, page_referrer, first_name, last_name, phone_number, dob, gender, zip_code, language, user_agent, cookies, geolocation, ip_address, miscellaneous, created_at, updated_at) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, POINT($17, $18), $19, $20, $21, $22) RETURNING id;"
-	ID_QUERY            = "SELECT last_value, increment_by FROM prospects.leads_id_seq"
-	LEAD_SOURCE_QUERY   = "SELECT enum_range(NULL::prospects.lead_source) AS lead_sources"
-	EMAIL_REGEX         = "^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$"
-	UUID_REGEX          = "^[a-z0-9]{8}-[a-z0-9]{4}-[1-5][a-z0-9]{3}-[a-z0-9]{4}-[a-z0-9]{12}$"
-	REQUEST_URL         = "/prospects"
-	ROBOTS_TXT_URL      = "/robots.txt"
-	SITEMAP_XML_URL     = "/sitemap.xml"
-	FAVICON_ICO_URL     = "/favicon.ico"
-	CONTENT_TYPE_HEADER = "Content-Type"
-	JSON_CONTENT_TYPE   = "application/json"
-	XML_CONTENT_TYPE    = "application/xml"
-	TEXT_CONTENT_TYPE   = "text/plain"
-	XFF_HEADER          = "X-Forwarded-For"
+	QUERY                = "INSERT INTO prospects.leads(lead_id, app_name, email, lead_source, feedback, referrer, page_referrer, first_name, last_name, phone_number, dob, gender, zip_code, language, user_agent, cookies, geolocation, ip_address, miscellaneous, created_at, updated_at) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, POINT($17, $18), $19, $20, $21, $22) RETURNING id;"
+	ID_QUERY             = "SELECT last_value, increment_by FROM prospects.leads_id_seq"
+	LEAD_SOURCE_QUERY    = "SELECT enum_range(NULL::prospects.lead_source) AS lead_sources"
+	VERIFY_LEAD_QUERY    = "UPDATE prospects.leads SET is_valid = true WHERE lead_source IN ('landing', 'email', 'phone') AND lead_id = $1 AND (email = $2 OR phone_number = $3)"
+	EMAIL_REGEX          = "^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$"
+	UUID_REGEX           = "^[a-z0-9]{8}-[a-z0-9]{4}-[1-5][a-z0-9]{3}-[a-z0-9]{4}-[a-z0-9]{12}$"
+	REQUEST_URL          = "/prospects"
+	VERIFY_URL           = "/verify"
+	ROBOTS_TXT_URL       = "/robots.txt"
+	SITEMAP_XML_URL      = "/sitemap.xml"
+	FAVICON_ICO_URL      = "/favicon.ico"
+	CONTENT_TYPE_HEADER  = "Content-Type"
+	LOCATION_HEADER      = "Location"
+	CACHE_CONTROL_HEADER = "Cache-Control"
+	EXPIRES_HEADER       = "Expires"
+	JSON_CONTENT_TYPE    = "application/json"
+	XML_CONTENT_TYPE     = "application/xml"
+	TEXT_CONTENT_TYPE    = "text/plain"
+	HTML_CONTENT_TYPE    = "text/html"
+	XFF_HEADER           = "X-Forwarded-For"
 )
 
 type Response struct {
@@ -71,6 +78,7 @@ var gzipCompressionLevel int
 var robotsTxtResponse bool
 var sitemapXmlResponse bool
 var faviconIcoResponse bool
+var verifyLeadRedirectUrls map[string]string
 
 type ProspectForm common.Prospect
 
@@ -585,6 +593,31 @@ func main() {
 		log.Print("favicon.ico support disabled")
 	}
 
+	//Verify leads
+	verifyLeadRedirectUrlsStr := os.Getenv("VERIFY_LEAD_REDIRECT_URLS")
+	if len(verifyLeadRedirectUrlsStr) > 0 {
+		verifyLeadRedirectUrls = make(map[string]string)
+
+		isUrl := func(val string) bool {
+			_, err := url.Parse(val)
+			return nil == err
+		}
+
+		verifyLeadRedirectUrlsArr := strings.Split(verifyLeadRedirectUrlsStr, ",")
+		for _, verifyLeadRedirectUrl := range verifyLeadRedirectUrlsArr {
+			nvp := strings.Split(verifyLeadRedirectUrl, "|")
+
+			if len(nvp) == 2 && isUrl(nvp[1]) {
+				verifyLeadRedirectUrls[nvp[0]] = nvp[1]
+				log.Printf("Added lead verification redirect url: %s for app name %s", nvp[1], nvp[0])
+			} else {
+				log.Printf("Invalid lead verification redirect url specified %s", verifyLeadRedirectUrl)
+			}
+		}
+	} else {
+		log.Print("No lead verification redirect urls configured")
+	}
+
 	//Signal handler
 	signals := make(chan os.Signal)
 	signal.Notify(signals, os.Interrupt)
@@ -912,7 +945,75 @@ func runHttpServer(createHandler CreateHandler, errorHandler ErrorHandler, notFo
 		martini_.Head(FAVICON_ICO_URL, getFaviconIco, errorHandler)
 	}
 
+	//Verify prospect
+	if len(verifyLeadRedirectUrls) > 0 {
+		notFoundText := `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Not found!</title></head>
+                         <body><img src="http://media02.hongkiat.com/error_404_01/csstricks.jpg" alt="Not found css"></body></html>`
+
+		getSqlString := func(values *url.Values, fieldName string) sql.NullString {
+			value := values.Get(fieldName)
+			empty := len(value) <= 0
+			return sql.NullString{value, !empty}
+		}
+
+		isValidUserId := func(val *sql.NullString) bool {
+			return val.Valid && uuidRegex.MatchString(val.String)
+		}
+
+		isValidEmail := func(val *sql.NullString) bool {
+			return val.Valid && emailRegex.MatchString(val.String)
+		}
+
+		verifyProspect := func(res http.ResponseWriter, req *http.Request) (int, string) {
+			go func() {
+				values := req.URL.Query()
+				userId := getSqlString(&values, "userId")
+				email := getSqlString(&values, "email")
+				phoneNumber := getSqlString(&values, "phone_number")
+
+				if isValidUserId(&userId) && (isValidEmail(&email) || phoneNumber.Valid) {
+					res, err := db.Exec(VERIFY_LEAD_QUERY, userId, email, phoneNumber)
+					if nil != err {
+						log.Print(err)
+					} else {
+						count, _ := res.RowsAffected()
+						if count == 0 {
+							log.Printf("No leads verified after request %s", values)
+						} else {
+							log.Printf("Successfully verified %d leads after request %s", count, values)
+						}
+					}
+				} else {
+					log.Printf("Invalid verification request received: %s", values)
+				}
+			}()
+
+			appName := req.URL.Query().Get("app_name")
+			verifyRedirectUrl := verifyLeadRedirectUrls[appName]
+
+			if len(verifyRedirectUrl) == 0 {
+				res.Header().Set(CONTENT_TYPE_HEADER, HTML_CONTENT_TYPE)
+				return http.StatusNotFound, notFoundText
+			} else {
+
+				verifyResponseText := fmt.Sprintf(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Redirect in progress</title></head>
+                                                   <body><p>Please visit us <a href="%s">here</a></p></body></html>`, verifyRedirectUrl)
+
+				res.Header().Set(LOCATION_HEADER, verifyRedirectUrl)
+				res.Header().Set(CONTENT_TYPE_HEADER, HTML_CONTENT_TYPE)
+				res.Header().Set(CACHE_CONTROL_HEADER, "no-store, no-cache, must-revalidate")
+				res.Header().Set(EXPIRES_HEADER, "Thu, 01 Jan 1970 00:00:00 GMT")
+				return http.StatusMovedPermanently, verifyResponseText
+			}
+		}
+		martini_.Get(VERIFY_URL, verifyProspect, errorHandler)
+		martini_.Head(VERIFY_URL, verifyProspect, errorHandler)
+	}
+
+	//Prospects
 	martini_.Post(REQUEST_URL, binding.Form(ProspectForm{}), errorHandler, createHandler)
 	martini_.NotFound(notFoundHandler)
+
+	//Event loop
 	martini_.Run()
 }
