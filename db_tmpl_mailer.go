@@ -54,7 +54,7 @@ func (dtm *DatabaseTemplateMailer) getHtmlTemplate() (*template.Template, error)
 	}
 
 	if responseCode < 200 || responseCode > 299 || len(smtpTemplate) <= 0 {
-		return nil, fmt.Errorf("Could not retrieve SMTP template.  Status code %d", responseCode)
+		return nil, fmt.Errorf("Could not retrieve SMTP template.  Status code %d.  Length of template: %d", responseCode, len(smtpTemplate))
 	}
 
 	//HTML templating
@@ -175,7 +175,12 @@ func (dtm *DatabaseTemplateMailer) SendMail() error {
 			}
 		}
 
-		emailSubject := fmt.Sprintf(dtm.SmtpSubject, smtpSubjectValues)
+		var emailSubject string
+		if len(smtpSubjectValues) > 0 {
+			emailSubject = fmt.Sprintf(dtm.SmtpSubject, smtpSubjectValues)
+		} else {
+			emailSubject = dtm.SmtpSubject
+		}
 
 		message := gomail.NewMessage()
 		message.SetHeader(FROM_HEADER, dtm.SourceEmail)
