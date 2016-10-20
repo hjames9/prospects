@@ -46,6 +46,12 @@ type Prospect struct {
 	IsValid       bool
 }
 
+type Response struct {
+	Code    int
+	Message string
+	Id      int64 `json:",omitempty"`
+}
+
 func IsJSON(str string) bool {
 	var js map[string]interface{}
 	return json.Unmarshal([]byte(str), &js) == nil

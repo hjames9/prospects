@@ -49,12 +49,6 @@ const (
 	XFF_HEADER           = "X-Forwarded-For"
 )
 
-type Response struct {
-	Code    int
-	Message string
-	Id      int64 `json:",omitempty"`
-}
-
 type Position int
 
 const (
@@ -665,28 +659,28 @@ func setupHttpHandlers(db *sql.DB) (CreateHandler, ErrorHandler, NotFoundHandler
 
 		req.Close = true
 		res.Header().Set(CONTENT_TYPE_HEADER, JSON_CONTENT_TYPE)
-		var response Response
+		var response common.Response
 
 		if asyncRequest && prospectBatchProcessor.Running {
 			prospectBatchProcessor.AddEvent(&prospect)
 			responseStr := "Successfully added prospect"
-			response = Response{Code: http.StatusAccepted, Message: responseStr}
+			response = common.Response{Code: http.StatusAccepted, Message: responseStr}
 			log.Print(responseStr)
 		} else if asyncRequest && !prospectBatchProcessor.Running {
 			responseStr := "Could not add prospect due to server maintenance"
-			response = Response{Code: http.StatusServiceUnavailable, Message: responseStr}
+			response = common.Response{Code: http.StatusServiceUnavailable, Message: responseStr}
 			log.Print(responseStr)
 		} else {
 			id, err := addProspect(db, &prospect, nil)
 			if nil != err {
 				responseStr := "Could not add prospect due to server error"
-				response = Response{Code: http.StatusInternalServerError, Message: responseStr}
+				response = common.Response{Code: http.StatusInternalServerError, Message: responseStr}
 				log.Print(responseStr)
 				log.Print(err)
 				log.Printf("%d database connections opened", db.Stats().OpenConnections)
 			} else {
 				responseStr := "Successfully added prospect"
-				response = Response{Code: http.StatusCreated, Message: responseStr, Id: id}
+				response = common.Response{Code: http.StatusCreated, Message: responseStr, Id: id}
 				log.Print(responseStr)
 			}
 		}
@@ -712,38 +706,38 @@ func setupHttpHandlers(db *sql.DB) (CreateHandler, ErrorHandler, NotFoundHandler
 			log.Printf("Error received. Fields: %s", fieldsMsg)
 
 			res.Header().Set(CONTENT_TYPE_HEADER, JSON_CONTENT_TYPE)
-			var response Response
+			var response common.Response
 
 			if errors.Has(binding.RequiredError) {
 				res.WriteHeader(http.StatusBadRequest)
 				responseStr := fmt.Sprintf("Missing required field(s): %s", fieldsMsg)
-				response = Response{Code: http.StatusBadRequest, Message: responseStr}
+				response = common.Response{Code: http.StatusBadRequest, Message: responseStr}
 			} else if errors.Has(binding.ContentTypeError) {
 				res.WriteHeader(http.StatusUnsupportedMediaType)
-				response = Response{Code: http.StatusUnsupportedMediaType, Message: "Invalid content type"}
+				response = common.Response{Code: http.StatusUnsupportedMediaType, Message: "Invalid content type"}
 			} else if errors.Has(binding.DeserializationError) {
 				res.WriteHeader(http.StatusBadRequest)
-				response = Response{Code: http.StatusBadRequest, Message: "Deserialization error"}
+				response = common.Response{Code: http.StatusBadRequest, Message: "Deserialization error"}
 			} else if errors.Has(binding.TypeError) {
 				res.WriteHeader(http.StatusBadRequest)
-				response = Response{Code: http.StatusBadRequest, Message: errors[0].Error()}
+				response = common.Response{Code: http.StatusBadRequest, Message: errors[0].Error()}
 			} else if errors.Has(common.BOT_ERROR) {
 				if botDetection.PlayCoy && !asyncRequest {
 					res.WriteHeader(http.StatusCreated)
-					response = Response{Code: http.StatusCreated, Message: "Successfully added prospect", Id: getNextId(db)}
+					response = common.Response{Code: http.StatusCreated, Message: "Successfully added prospect", Id: getNextId(db)}
 					log.Printf("Robot detected: %s. Playing coy.", errors[0].Error())
 				} else if botDetection.PlayCoy && asyncRequest {
 					res.WriteHeader(http.StatusAccepted)
-					response = Response{Code: http.StatusAccepted, Message: "Successfully added prospect"}
+					response = common.Response{Code: http.StatusAccepted, Message: "Successfully added prospect"}
 					log.Printf("Robot detected: %s. Playing coy.", errors[0].Error())
 				} else {
 					res.WriteHeader(http.StatusBadRequest)
-					response = Response{Code: http.StatusBadRequest, Message: errors[0].Error()}
+					response = common.Response{Code: http.StatusBadRequest, Message: errors[0].Error()}
 					log.Printf("Robot detected: %s. Rejecting message.", errors[0].Error())
 				}
 			} else {
 				res.WriteHeader(http.StatusBadRequest)
-				response = Response{Code: http.StatusBadRequest, Message: "Unknown error"}
+				response = common.Response{Code: http.StatusBadRequest, Message: "Unknown error"}
 			}
 
 			log.Print(response.Message)
@@ -756,7 +750,7 @@ func setupHttpHandlers(db *sql.DB) (CreateHandler, ErrorHandler, NotFoundHandler
 		req.Close = true
 		res.Header().Set(CONTENT_TYPE_HEADER, JSON_CONTENT_TYPE)
 		responseStr := fmt.Sprintf("URL Not Found %s", req.URL)
-		response := Response{Code: http.StatusNotFound, Message: responseStr}
+		response := common.Response{Code: http.StatusNotFound, Message: responseStr}
 		log.Print(responseStr)
 		jsonStr, _ := json.Marshal(response)
 		return response.Code, string(jsonStr)
