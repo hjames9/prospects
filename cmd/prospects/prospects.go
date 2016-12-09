@@ -152,6 +152,7 @@ func (prospect ProspectForm) Validate(errors binding.Errors, req *http.Request) 
 
 			if nil != err {
 				failed = true
+				log.Print(err)
 			} else {
 				age := common.GetAge(dob)
 				failed = age < 0 || age > 200
@@ -160,7 +161,6 @@ func (prospect ProspectForm) Validate(errors binding.Errors, req *http.Request) 
 			if failed {
 				message := fmt.Sprintf("Invalid date of birth \"%s\" specified", prospect.DateOfBirth)
 				errors = addError(errors, []string{"dob"}, binding.TypeError, message)
-				log.Print(err)
 			}
 		}
 
