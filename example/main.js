@@ -15,6 +15,7 @@ function setupForm(formElement)
     var instagramBox = null;
     var twitterBox = null;
     var googleBox = null;
+    var snapchatBox = null;
     var youtubeBox = null;
     var feedbackBox = null;
     var latitudeBox = null;

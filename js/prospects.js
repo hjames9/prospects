@@ -189,6 +189,16 @@ Prospect.prototype.getGoogle = function() {
     return this.leadSource == 'google';
 };
 
+Prospect.prototype.setSnapchat = function(snapchat) {
+    if(snapchat) {
+        this.leadSource = 'snapchat';
+    }
+};
+
+Prospect.prototype.getSnapchat = function() {
+    return this.leadSource == 'snapchat';
+};
+
 Prospect.prototype.setYoutube = function(youtube) {
     if(youtube) {
         this.leadSource = 'youtube';
@@ -338,6 +348,7 @@ Prospect.prototype.ready = function() {
              || this.leadSource == 'instagram'
              || this.leadSource == 'twitter'
              || this.leadSource == 'google'
+             || this.leadSource == 'snapchat'
              || this.leadSource == 'youtube');
 };
 
