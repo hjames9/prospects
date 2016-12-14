@@ -1,5 +1,5 @@
 {
-	"ImportPath": "bitbucket.org/savewithus/prospects",
+	"ImportPath": "bitbucket.org/padium/prospects",
 	"GoVersion": "go1.7",
 	"GodepVersion": "v74",
 	"Packages": [

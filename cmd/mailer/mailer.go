@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bitbucket.org/savewithus/prospects"
+	"bitbucket.org/padium/prospects"
 	"database/sql"
 	"flag"
 	_ "github.com/lib/pq"

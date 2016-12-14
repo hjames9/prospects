@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bitbucket.org/savewithus/prospects"
+	"bitbucket.org/padium/prospects"
 	"bytes"
 	"database/sql"
 	"encoding/json"
