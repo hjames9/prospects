@@ -896,7 +896,8 @@ func runHttpServer(createHandler CreateHandler, errorHandler ErrorHandler, notFo
 	log.Printf("Setting SSL redirect to %t", sslRedirect)
 
 	martini_.Use(secure.Secure(secure.Options{
-		SSLRedirect: sslRedirect,
+		SSLRedirect:     sslRedirect,
+		SSLProxyHeaders: map[string]string{"X-Forwarded-Proto": "https"},
 	}))
 
 	//robots.txt
