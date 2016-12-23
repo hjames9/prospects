@@ -138,7 +138,11 @@ func applySSL(opt Options, res http.ResponseWriter, req *http.Request) {
 				url.Host = opt.SSLHost
 			}
 
-			http.Redirect(res, req, url.String(), http.StatusMovedPermanently)
+			if req.Method != "" && req.Method != "GET" && req.Method != "HEAD" {
+				http.Redirect(res, req, url.String(), http.StatusTemporaryRedirect)
+			} else {
+				http.Redirect(res, req, url.String(), http.StatusMovedPermanently)
+			}
 		}
 	}
 }
