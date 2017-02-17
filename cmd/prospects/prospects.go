@@ -388,6 +388,8 @@ func main() {
 		stringSizeLimit = 500
 		log.Printf("Error setting string size limit from value: %s. Default to %d", stringSizeLimitStr, stringSizeLimit)
 		log.Print(err)
+	} else {
+		log.Printf("String size limit set to %s", stringSizeLimitStr)
 	}
 
 	feedbackSizeLimit, err = strconv.Atoi(feedbackSizeLimitStr)
@@ -395,6 +397,8 @@ func main() {
 		feedbackSizeLimit = 10
 		log.Printf("Error setting feedback size limit from value: %s. Default to %d", feedbackSizeLimitStr, feedbackSizeLimit)
 		log.Print(err)
+	} else {
+		log.Printf("Feedback size limit set to %s", feedbackSizeLimitStr)
 	}
 
 	//Allowable Application names
@@ -510,6 +514,7 @@ func main() {
 
 	//IP address location
 	ipAddressLocation = common.GetenvWithDefault("IP_ADDRESS_LOCATION", "normal")
+	log.Printf("IP_ADDRESS_LOCATION set to %s", ipAddressLocation)
 
 	//Asynchronous database writes
 	asyncRequest, err = strconv.ParseBool(common.GetenvWithDefault("ASYNC_REQUEST", "false"))
@@ -525,6 +530,8 @@ func main() {
 		asyncRequestSize = 100000
 		log.Printf("Error converting input for field ASYNC_REQUEST_SIZE. Defaulting to 100000.")
 		log.Print(err)
+	} else {
+		log.Printf("ASYNC_REQUEST_SIZE set to %s", asyncRequestSizeStr)
 	}
 
 	asyncProcessIntervalStr := common.GetenvWithDefault("ASYNC_PROCESS_INTERVAL", "5")
@@ -533,6 +540,8 @@ func main() {
 		asyncProcessInterval = 5
 		log.Printf("Error converting input for field ASYNC_PROCESS_INTERVAL. Defaulting to 5.")
 		log.Print(err)
+	} else {
+		log.Printf("ASYNC_PROCESS_INTERVAL set to %s", asyncProcessIntervalStr)
 	}
 
 	if asyncRequest {
