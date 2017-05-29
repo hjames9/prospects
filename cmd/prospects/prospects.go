@@ -106,8 +106,6 @@ func (prospect ProspectForm) Validate(errors binding.Errors, req *http.Request) 
 		if len(prospect.LeadId) > 0 && !uuidRegex.MatchString(prospect.LeadId) {
 			message := fmt.Sprintf("Invalid uuid \"%s\" format specified", prospect.LeadId)
 			errors = addError(errors, []string{"leadid"}, binding.TypeError, message)
-		} else if len(prospect.LeadId) <= 0 {
-			prospect.LeadId = uuid.NewV4().String()
 		}
 
 		if !leadSources[prospect.LeadSource] {
@@ -669,6 +667,11 @@ func setupHttpHandlers(db *sql.DB) (CreateHandler, ErrorHandler, NotFoundHandler
 
 		if len(prospect.Cookies) > 0 {
 			prospect.Cookies = fmt.Sprintf("{%s}", prospect.Cookies)
+		}
+
+		if len(prospect.LeadId) <= 0 {
+			prospect.LeadId = uuid.NewV4().String()
+			log.Printf("Prospect lead id not provided. Generated one instead %s", prospect.LeadId)
 		}
 
 		log.Printf("Received new prospect: %#v", prospect)
