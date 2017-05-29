@@ -22,7 +22,7 @@ const (
 
 type Prospect struct {
 	Id            int64
-	LeadId        string `form:"leadid" binding:"required"`
+	LeadId        string `form:"leadid"`
 	AppName       string `form:"appname" binding:"required"`
 	Referrer      string
 	PageReferrer  string `form:"pagereferrer"`

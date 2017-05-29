@@ -11,6 +11,7 @@ import (
 	"github.com/martini-contrib/cors"
 	"github.com/martini-contrib/gzip"
 	"github.com/martini-contrib/secure"
+	"github.com/satori/go.uuid"
 	"log"
 	"math/rand"
 	"net"
@@ -30,7 +31,7 @@ const (
 	QUERY                = "INSERT INTO prospects.leads(lead_id, app_name, email, lead_source, feedback, referrer, page_referrer, first_name, last_name, phone_number, dob, gender, zip_code, language, user_agent, cookies, geolocation, ip_address, miscellaneous, created_at, updated_at) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, POINT($17, $18), $19, $20, $21, $22) RETURNING id;"
 	ID_QUERY             = "SELECT last_value, increment_by FROM prospects.leads_id_seq"
 	LEAD_SOURCE_QUERY    = "SELECT enum_range(NULL::prospects.lead_source) AS lead_sources"
-	VERIFY_LEAD_QUERY    = "UPDATE prospects.leads SET is_valid = true WHERE lead_source IN ('landing', 'email', 'phone') AND lead_id = $1 AND (email = $2 OR phone_number = $3)"
+	VERIFY_LEAD_QUERY    = "UPDATE prospects.leads SET is_valid = true WHERE lead_source IN ('landing', 'email', 'phone', 'popup') AND lead_id = $1 AND (email = $2 OR phone_number = $3)"
 	EMAIL_REGEX          = "^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$"
 	UUID_REGEX           = "^[a-z0-9]{8}-[a-z0-9]{4}-[1-5][a-z0-9]{3}-[a-z0-9]{4}-[a-z0-9]{12}$"
 	REQUEST_URL          = "/prospects"
@@ -105,6 +106,8 @@ func (prospect ProspectForm) Validate(errors binding.Errors, req *http.Request) 
 		if len(prospect.LeadId) > 0 && !uuidRegex.MatchString(prospect.LeadId) {
 			message := fmt.Sprintf("Invalid uuid \"%s\" format specified", prospect.LeadId)
 			errors = addError(errors, []string{"leadid"}, binding.TypeError, message)
+		} else if len(prospect.LeadId) <= 0 {
+			prospect.LeadId = uuid.NewV4().String()
 		}
 
 		if !leadSources[prospect.LeadSource] {
@@ -118,6 +121,10 @@ func (prospect ProspectForm) Validate(errors binding.Errors, req *http.Request) 
 
 		if prospect.LeadSource == "email" && len(prospect.Email) == 0 {
 			errors = addError(errors, []string{"leadsource", "email"}, binding.RequiredError, "Email address required with email lead source.")
+		}
+
+		if prospect.LeadSource == "popup" && len(prospect.Email) == 0 {
+			errors = addError(errors, []string{"leadsource", "email"}, binding.RequiredError, "Email address required with popup lead source.")
 		}
 
 		if prospect.LeadSource == "phone" && len(prospect.PhoneNumber) == 0 {

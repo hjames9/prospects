@@ -209,6 +209,16 @@ Prospect.prototype.getYoutube = function() {
     return this.leadSource == 'youtube';
 };
 
+Prospect.prototype.setPopup = function(popup) {
+    if(popup) {
+        this.leadSource = 'popup';
+    }
+};
+
+Prospect.prototype.getPopup = function() {
+    return this.leadSource == 'popup';
+};
+
 Prospect.prototype.setExtended = function(extended) {
     if(extended) {
         this.leadSource = 'extended';

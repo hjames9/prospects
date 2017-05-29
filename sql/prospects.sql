@@ -6,7 +6,7 @@ SET search_path TO prospects,public;
 
 CREATE TYPE gender AS ENUM ('male', 'female');
 
-CREATE TYPE lead_source AS ENUM ('landing', 'email', 'phone', 'extended', 'feedback', 'pinterest', 'facebook', 'instagram', 'twitter', 'google', 'snapchat', 'youtube');
+CREATE TYPE lead_source AS ENUM ('landing', 'email', 'phone', 'extended', 'feedback', 'pinterest', 'facebook', 'instagram', 'twitter', 'google', 'snapchat', 'youtube', 'popup');
 
 CREATE TABLE leads
 (
